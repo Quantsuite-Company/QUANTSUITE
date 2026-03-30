@@ -1,0 +1,614 @@
+@import 'leaflet/dist/leaflet.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * QuantSuite Design System Tokens
+ * Advanced theming with glassmorphism, trading semantics, and motion
+ */
+
+/* Futuristic Landing Page Styles */
+@keyframes scroll-x {
+  from {
+    transform: translateX(100%);
+  }
+
+  to {
+    transform: translateX(-100%);
+  }
+}
+
+@keyframes glow-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(0, 245, 255, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(0, 245, 255, 0.6);
+  }
+}
+
+@keyframes gold-glow-pulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+  }
+
+  50% {
+    box-shadow: 0 0 40px rgba(255, 215, 0, 0.6);
+  }
+}
+
+@keyframes shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-4px);
+  }
+
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+.animate-scroll-x {
+  animation: scroll-x 30s linear infinite;
+}
+
+.shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+.glow-text {
+  text-shadow: 0 0 20px rgba(0, 245, 255, 0.5);
+}
+
+.glow-green {
+  animation: glow-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+}
+
+.glow-gold {
+  animation: gold-glow-pulse 2s ease-in-out infinite;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+}
+
+.glow-card {
+  box-shadow: 0 8px 32px rgba(0, 245, 255, 0.1);
+  transition: all 0.3s ease;
+}
+
+.glow-card:hover {
+  box-shadow: 0 12px 48px rgba(0, 245, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.cursor-crosshair {
+  cursor: crosshair;
+}
+
+.pulse-page {
+
+  /* Map Customizations */
+  .leaflet-container {
+    background: #0a0b0d;
+    font-family: inherit;
+  }
+
+  .leaflet-marker-pane {
+    z-index: 600 !important;
+  }
+
+  .leaflet-tooltip-pane {
+    z-index: 650 !important;
+  }
+
+  .leaflet-popup-content-wrapper {
+    background: rgba(10, 11, 13, 0.95);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px);
+    border-radius: 4px;
+    padding: 0;
+  }
+}
+
+/* Glassmorphism effects */
+.backdrop-blur-md {
+  backdrop-filter: blur(12px);
+}
+
+/* Custom scrollbar for better aesthetics */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, #00f5ff, #ffd700);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(45deg, #00d4ff, #ffed4e);
+}
+
+/* Professional Trading Terminal Design System */
+
+@layer base {
+  :root {
+    /* Core Trading Terminal Colors */
+    --background: 220 26% 4%;
+    --foreground: 210 20% 95%;
+
+    --card: 220 20% 6%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 220 20% 6%;
+    --popover-foreground: 210 20% 95%;
+
+    /* Trading Accent Colors */
+    --primary: 198 93% 60%;
+    --primary-foreground: 220 26% 4%;
+    --primary-glow: 198 93% 70%;
+
+    --secondary: 220 20% 12%;
+    --secondary-foreground: 210 20% 95%;
+
+    --muted: 220 20% 8%;
+    --muted-foreground: 215 15% 65%;
+
+    --accent: 142 76% 36%;
+    --accent-foreground: 220 26% 4%;
+    --accent-glow: 142 76% 46%;
+
+    /* Financial Status Colors */
+    --success: 142 76% 36%;
+    --success-foreground: 220 26% 4%;
+    --profit: 142 76% 36%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+    --loss: 0 84% 60%;
+
+    /* Interface Elements */
+    --border: 220 20% 12%;
+    --input: 220 20% 8%;
+    --input-foreground: 210 40% 98%;
+    --ring: 198 93% 60%;
+
+    /* Trading Terminal Specific */
+    --terminal-bg: 220 26% 4%;
+    --terminal-panel: 220 20% 6%;
+    --terminal-highlight: 220 20% 10%;
+    --terminal-accent: 198 93% 60%;
+    --terminal-success: 142 76% 36%;
+
+    /* Parameter-specific colors */
+    --param-stock: 198 93% 60%;
+    /* Blue - Stock Price */
+    --param-strike: 142 76% 36%;
+    /* Green - Strike Price */
+    --param-time: 45 93% 58%;
+    /* Yellow - Time */
+    --param-volatility: 291 64% 42%;
+    /* Purple - Volatility */
+    --param-rate: 14 91% 43%;
+    /* Orange - Risk-free Rate */
+    --param-dividend: 340 82% 52%;
+    /* Pink - Dividend Yield */
+
+    /* Chart Colors */
+    --chart-1: 198 93% 60%;
+    /* Primary Blue - At Expiration */
+    --chart-2: 45 93% 58%;
+    /* Yellow - 30 Days */
+    --chart-3: 291 64% 42%;
+    /* Purple - 60 Days */
+    --chart-4: 142 76% 36%;
+    /* Green */
+    --chart-5: 0 84% 60%;
+    /* Red */
+
+    /* Terminal Chart System */
+    --chart-bg: 220 20% 6%;
+    --chart-grid: 220 20% 15%;
+    --chart-grid-subtle: 220 20% 12%;
+    --chart-axis: 210 20% 55%;
+    --chart-axis-label: 210 20% 65%;
+
+    /* Trading Semantic Colors */
+    --trading-profit: 152 69% 45%;
+    --trading-profit-light: 152 69% 55%;
+    --trading-loss: 0 84% 60%;
+    --trading-loss-light: 0 84% 70%;
+    --trading-neutral: 220 20% 60%;
+
+    /* Chart Glow Effects */
+    --glow-cyan: 198 93% 60%;
+    --glow-green: 152 69% 45%;
+    --glow-red: 0 84% 60%;
+    --glow-amber: 45 93% 58%;
+    --glow-purple: 262 83% 58%;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary-glow)));
+    --gradient-accent: linear-gradient(135deg, hsl(var(--accent)), hsl(var(--accent-glow)));
+    --gradient-card: linear-gradient(135deg, hsl(var(--card)), hsl(var(--terminal-highlight)));
+
+    /* Shadows & Effects */
+    --shadow-terminal: 0 4px 20px -4px hsl(var(--primary) / 0.3);
+    --shadow-glow: 0 0 20px hsl(var(--terminal-accent) / 0.4);
+    --shadow-card: 0 2px 10px -2px hsl(220 20% 2% / 0.8);
+
+    --radius: 1.25rem;
+
+    --sidebar-background: 0 0% 0%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 198 93% 60%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 0 0% 10%;
+    --sidebar-accent-foreground: 0 0% 90%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 198 93% 60%;
+
+    /* QuantSuite Brand Scale */
+    --qs-brand-50: 187 100% 97%;
+    --qs-brand-100: 187 95% 92%;
+    --qs-brand-200: 187 90% 82%;
+    --qs-brand-300: 187 85% 72%;
+    --qs-brand-400: 187 80% 62%;
+    --qs-brand-500: 187 100% 48%;
+    --qs-brand-600: 187 100% 38%;
+    --qs-brand-700: 187 100% 28%;
+    --qs-brand-800: 187 100% 18%;
+    --qs-brand-900: 187 100% 12%;
+
+    /* Trading Semantics */
+    --qs-profit: 142 71% 45%;
+    --qs-profit-light: 142 71% 55%;
+    --qs-loss: 0 84% 60%;
+    --qs-loss-light: 0 84% 70%;
+    --qs-neutral: 0 0% 64%;
+
+    /* Market Status */
+    --qs-market-open: 142 71% 45%;
+    --qs-market-closed: 0 0% 50%;
+    --qs-market-pre: 45 93% 47%;
+    --qs-market-post: 262 83% 58%;
+
+    /* Glassmorphism */
+    --qs-glass-bg: hsla(0 0% 100% / 0.05);
+    --qs-glass-bg-light: hsla(0 0% 100% / 0.08);
+    --qs-glass-bg-dark: hsla(0 0% 0% / 0.2);
+    --qs-glass-border: hsla(0 0% 100% / 0.1);
+    --qs-glass-border-light: hsla(0 0% 100% / 0.15);
+  }
+
+  .dark {
+    /* Dark theme aligned with terminal aesthetic — no conflicts with :root */
+    --background: 220 26% 4%;
+    --foreground: 210 20% 95%;
+
+    --card: 220 20% 6%;
+    --card-foreground: 210 20% 95%;
+
+    --popover: 220 20% 6%;
+    --popover-foreground: 210 20% 95%;
+
+    --primary: 198 93% 60%;
+    --primary-foreground: 220 26% 4%;
+
+    --secondary: 220 20% 12%;
+    --secondary-foreground: 210 20% 95%;
+
+    --muted: 220 20% 8%;
+    --muted-foreground: 215 15% 65%;
+
+    --accent: 142 76% 36%;
+    --accent-foreground: 220 26% 4%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 220 20% 12%;
+    --input: 220 20% 8%;
+    --input-foreground: 210 40% 98%;
+    --ring: 198 93% 60%;
+
+    --sidebar-background: 220 26% 3%;
+    --sidebar-foreground: 210 20% 95%;
+    --sidebar-primary: 198 93% 60%;
+    --sidebar-primary-foreground: 220 26% 4%;
+    --sidebar-accent: 220 20% 8%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 220 20% 10%;
+    --sidebar-ring: 198 93% 60%;
+
+    --chart-1: 198 93% 60%;
+    --chart-2: 45 93% 58%;
+    --chart-3: 291 64% 42%;
+    --chart-4: 142 76% 36%;
+    --chart-5: 0 84% 60%;
+  }
+}
+
+/* Custom Components & Animations */
+@layer components {
+  .terminal-panel {
+    @apply bg-gradient-to-br from-card to-terminal-highlight border border-border rounded-lg shadow-[var(--shadow-card)];
+  }
+
+  .terminal-input {
+    @apply bg-input border-border text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200;
+  }
+
+  .terminal-slider {
+    @apply appearance-none bg-terminal-highlight rounded-lg h-2 outline-none;
+  }
+
+  .terminal-slider::-webkit-slider-thumb {
+    @apply appearance-none w-5 h-5 rounded-full cursor-pointer shadow-[var(--shadow-glow)] transition-transform duration-200 hover:scale-110;
+  }
+
+  .terminal-slider::-moz-range-thumb {
+    @apply w-5 h-5 rounded-full cursor-pointer shadow-[var(--shadow-glow)] border-0 transition-transform duration-200 hover:scale-110;
+  }
+
+  /* Parameter-specific slider styles */
+  .slider-stock::-webkit-slider-thumb {
+    background: linear-gradient(135deg, hsl(var(--param-stock)), hsl(var(--param-stock) / 0.8));
+  }
+
+  .slider-strike::-webkit-slider-thumb {
+    background: linear-gradient(135deg, hsl(var(--param-strike)), hsl(var(--param-strike) / 0.8));
+  }
+
+  .slider-time::-webkit-slider-thumb {
+    background: linear-gradient(135deg, hsl(var(--param-time)), hsl(var(--param-time) / 0.8));
+  }
+
+  .slider-volatility::-webkit-slider-thumb {
+    background: linear-gradient(135deg, hsl(var(--param-volatility)), hsl(var(--param-volatility) / 0.8));
+  }
+
+  .slider-rate::-webkit-slider-thumb {
+    background: linear-gradient(135deg, hsl(var(--param-rate)), hsl(var(--param-rate) / 0.8));
+  }
+
+  .slider-dividend::-webkit-slider-thumb {
+    background: linear-gradient(135deg, hsl(var(--param-dividend)), hsl(var(--param-dividend) / 0.8));
+  }
+
+  .value-change {
+    @apply transition-all duration-300 ease-out;
+  }
+
+  .profit-positive {
+    @apply text-accent font-semibold;
+  }
+
+  .profit-negative {
+    @apply text-destructive font-semibold;
+  }
+
+  .terminal-badge {
+    @apply inline-flex items-center rounded-md px-2.5 py-0.5 text-xs font-semibold transition-colors;
+  }
+
+  .terminal-badge-success {
+    @apply bg-success/10 text-success border border-success/20;
+  }
+
+  .terminal-badge-danger {
+    @apply bg-destructive/10 text-destructive border border-destructive/20;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  .terminal-glow {
+    box-shadow: var(--shadow-terminal);
+  }
+}
+
+/* AI Tool Wrapper Styles */
+.lab-bg::before {
+  overflow: hidden;
+  max-width: 100vw;
+  max-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* Spiral Animation Canvas */
+.spiral-canvas {
+  image-rendering: optimizeSpeed;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* ============ HIGH-TECH UTILITY CLASSES ============ */
+
+/* Data typography — monospace for numbers, prices, timestamps */
+.font-data {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* Scanline overlay — CRT monitor / sci-fi effect */
+@keyframes scanline {
+  0% {
+    transform: translateY(-100%);
+  }
+
+  100% {
+    transform: translateY(100%);
+  }
+}
+
+.scanline-overlay::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 245, 255, 0.015) 2px,
+      rgba(0, 245, 255, 0.015) 4px);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Data pulse — flash effect for live data updates */
+@keyframes data-pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.data-pulse {
+  animation: data-pulse 2s ease-in-out infinite;
+}
+
+/* Grid background overlay for technical instrument feel */
+.grid-overlay {
+  background-image:
+    linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* Neon glow text variations */
+.glow-cyan-text {
+  text-shadow: 0 0 10px rgba(0, 245, 255, 0.4), 0 0 30px rgba(0, 245, 255, 0.15);
+}
+
+.glow-emerald-text {
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.4), 0 0 30px rgba(16, 185, 129, 0.15);
+}
+
+.glow-red-text {
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.4), 0 0 30px rgba(239, 68, 68, 0.15);
+}
+
+/* Terminal card with subtle gradient border */
+.terminal-card-glow {
+  position: relative;
+  overflow: hidden;
+}
+
+.terminal-card-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.15), transparent 50%, rgba(255, 215, 0, 0.1));
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* Live indicator pulse */
+@keyframes live-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.5;
+    transform: scale(1.5);
+  }
+}
+
+.live-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  position: relative;
+}
+
+.live-dot::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.4);
+  animation: live-pulse 2s ease-in-out infinite;
+}
+
+/* Uppercase tracking for terminal labels */
+.terminal-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* AI Response Prose — Times New Roman for premium institutional feel */
+.ai-response-prose {
+  font-family: 'Times New Roman', Times, 'Georgia', serif;
+  font-size: 1.05rem;
+  line-height: 1.75;
+  letter-spacing: 0.01em;
+}
+
+.ai-response-prose h1,
+.ai-response-prose h2,
+.ai-response-prose h3,
+.ai-response-prose h4 {
+  font-family: 'Times New Roman', Times, 'Georgia', serif;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.ai-response-prose p,
+.ai-response-prose li,
+.ai-response-prose span:not(.font-mono) {
+  font-family: 'Times New Roman', Times, 'Georgia', serif;
+}

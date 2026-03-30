@@ -1,0 +1,61 @@
+project_id = "gllbecnpkvnxfhmxuinq"
+
+[functions.calculate-ic-metrics]
+verify_jwt = false
+
+[functions.run-walk-forward]
+verify_jwt = false
+
+[functions.athena-chat]
+verify_jwt = false
+
+[functions.portfolio-analysis]
+verify_jwt = false
+
+[functions.market-maw]
+verify_jwt = false
+
+[functions.generate-tutorial]
+verify_jwt = false
+
+[functions.fetch-market-data]
+verify_jwt = false
+
+[functions.fetch-stock-data]
+verify_jwt = false
+
+[functions.quantscript-generate]
+verify_jwt = false
+
+[functions.run-backtest]
+verify_jwt = false
+
+[functions.financial-sentiment]
+verify_jwt = false
+
+[functions.run-screener]
+verify_jwt = false
+
+[functions.ai-screener]
+verify_jwt = false
+
+[functions.fetch-insider-trades]
+verify_jwt = false
+
+[functions.fetch-congress-trades]
+verify_jwt = false
+
+[functions.realtime-market]
+verify_jwt = false
+
+[functions.geo-detect]
+verify_jwt = false
+
+[functions.market-sentiment]
+verify_jwt = false
+
+[functions.generate-sitemap]
+verify_jwt = false
+
+[functions.ai-strategy-advisor]
+verify_jwt = false
