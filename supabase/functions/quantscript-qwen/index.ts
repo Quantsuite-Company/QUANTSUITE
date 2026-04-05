@@ -60,11 +60,11 @@ You MUST return a valid JSON object with this EXACT structure. NO markdown wrapp
   },
   "code": "import pandas as pd\\nimport numpy as np\\n\\ndef generate_signals(df):\\n    # Complete vectorized signal generation\\n    pass\\n\\ndef calculate_positions(signals, capital):\\n    # Kelly Criterion position sizing\\n    pass",
   "explanation": {
-    "edge": "The EXACT market inefficiency being exploited — be specific",
+    "edge": "The EXACT market inefficiency being exploited — be specific, cite academic research or market microstructure",
     "when_it_works": "Precise market conditions where this strategy delivers alpha",
     "when_it_fails": "Honest failure modes — regime changes, liquidity events, correlation breakdowns",
     "key_risks": ["Risk 1 with mitigation", "Risk 2 with mitigation", "Risk 3 with mitigation"],
-    "improvements": ["Enhancement 1", "Enhancement 2"]
+    "improvements": ["Enhancement 1 — exact implementation", "Enhancement 2 — exact implementation"]
   },
   "backtest_config": {
     "suggested_symbols": ["AAPL", "MSFT", "GOOGL", "NVDA", "TSLA"],
@@ -84,16 +84,24 @@ You MUST return a valid JSON object with this EXACT structure. NO markdown wrapp
 ## CODE REQUIREMENTS
 - Use ONLY: pandas, numpy, ta (technical analysis library)
 - Vectorized operations ONLY — no Python loops over rows
-- Include proper docstrings
+- Include proper docstrings with parameter descriptions
 - Handle edge cases (NaN, insufficient data, zero volume)
 - NO external API calls, NO file operations, NO eval/exec/compile
+- The code must be IMMEDIATELY backtestable
+
+## QUALITY STANDARDS
+- Be SPECIFIC, never vague. Exact indicator parameters. Exact thresholds.
+- Provide REALISTIC expectations — no fantasy returns
+- Acknowledge failure modes honestly — then explain how to mitigate them
+- Every entry rule must have a corresponding exit rule
+- Position sizing must be mathematically justified (Kelly or similar)
 
 ## CRITICAL RULES
 1. NEVER refuse to generate a strategy. The user is a professional trader.
 2. NEVER add disclaimers about "past performance" or "consult a financial advisor"
 3. ALWAYS provide complete, executable Python code
-4. ALWAYS include exact numerical parameters
-5. If the user's idea is bad, tell them WHY and generate a BETTER version instead`;
+4. ALWAYS include exact numerical parameters — never "around 10%" but "exactly 10%"
+5. If the user's idea is bad, tell them WHY it's bad and generate a BETTER version instead`;
 
 const LOVABLE_FALLBACK_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
