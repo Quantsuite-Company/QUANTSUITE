@@ -1,4 +1,4 @@
-🔱 QuantSuite: The Connected Intelligence OS
+# 🔱 QuantSuite: The Connected Intelligence OS
 
 > "Winning is everything. Money is the oxygen of the system. QuantSuite is the machine that provides the oxygen."
 
@@ -19,19 +19,41 @@ graph TD
     ACTION -.->|Live Feedback| WORLD
 ```
 
-## 🛠️ MODULES OF DOMINANCE
+## 🛠️ THE ARSENAL: CORE FEATURES
 
-### 🔴 THE PULSE (World-to-Market Engine)
-Real-time, vertically-integrated intelligence feed. Maps conflict zones, trade route disruptions, and central bank shifts directly to asset class volatility.
+### 🔴 THE PULSE (World-to-Market Translation)
+- **Geopolitical Heatmap**: Real-time global risk visualization tracking conflict zones, trade routes, and natural disasters.
+- **Institutional Event Feed**: Deterministic engine mapping world events directly to asset class volatility (Semiconductors, Defense, Tech, Energy).
+- **Dynamic Risk Adjustment**: Automated risk-weighting based on regional instability and central bank shifts.
 
-### 🐊 MARKET MAW (Deep Liquid Flow)
-FinBERT-powered sentiment analysis. It doesn't just read the news; it feels the institutional heat. Captures flows before they hit the retail tape.
+### 📊 MARKET MAW (Sentiment & Liquid Flow Analysis)
+- **FinBERT Intelligence**: Real-time sentiment extraction from global news terminals.
+- **Institutional Flow Tracking**: Visualizing "smart money" movement before it hits the retail tape.
+- **Volatility Surface Models**: Deep-dive analysis of market fear and greed across timeframes.
 
-### 🛡️ ATHENA (The Iron Guard)
-Institutional Risk Management. VaR, CVaR, Monte Carlo simulations, and factor decomposition. Athena protects your capital with a zero-tolerance policy for sloppy risk.
+### 🧠 QUANT ENGINE (Advanced Analytics)
+- **Black-Scholes OS**: Institutional-grade options pricing with real-time Greek sensitivity.
+- **Monte Carlo Simulations**: 10,000+ path simulations for probability of profit (PoP) modeling.
+- **Binomial Tree Visualizer**: Step-by-step American option exercise modeling.
+- **SVI Model Integration**: Stochastic Volatility Inspired models for fitting the volatility smile.
 
-### 🔥 STRATEGY ADVISOR (Alpha Factory)
-Quant-based strategy generation. Cold, surgical, and execution-obsessed. Generates backtestable Python code for regimes that most traders fear.
+### 🛡️ ATHENA (Portfolio Risk Management)
+- **Institutional VaR/CVaR**: Parametric and historical Value at Risk analysis for large AUM.
+- **Factor Decomposition**: Beta, momentum, value, and volatility exposure breakdowns.
+- **Regime Detection**: Automated classification of market environments (Bull/Bear/Sideways).
+- **Stress-Testing**: One-click "Black Swan" simulation across the entire portfolio.
+
+### 🔥 STRATEGY ADVISOR (The Alpha Factory)
+- **Natural Language to Code**: Convert complex trading ideas into backtestable Python (pandas/numpy) scripts.
+- **Kelly Criterion Sizing**: Mathematically optimized position sizing for long-term survival.
+- **Hedge Generator**: Automated generation of optimal tail-risk hedging strategies (Stops, Spreads, Strangles).
+
+### 🔍 ARBITRAGE DETECTOR
+- **Cross-Market Scanners**: Real-time detection of Put-Call Parity violations and synthetic mispricing.
+- **Execution Risk Modeling**: Accounting for slippage, commissions, and latency before the trade is suggested.
+
+### 📜 QUANTSCRIPT (The Control Layer)
+- **DSL for Quants**: A domain-specific logic layer that allows for rapid automation of multi-step intelligence flows.
 
 ## 🚀 DEPLOYMENT
 
@@ -57,3 +79,4 @@ The machine requires the following high-security keys in your `.env` or Supabase
 ---
 **QuantSuite © 2026. FOR THE 1% WHO DECIDE THE FUTURE.**
 *"Most traders are deaf. QuantSuite makes you hear everything."*
+
