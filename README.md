@@ -1,73 +1,59 @@
-# Welcome to your Lovable project
+# 🔱 QuantSuite: The Connected Intelligence OS
 
-## Project info
+> "Winning is everything. Money is the oxygen of the system. QuantSuite is the machine that provides the oxygen."
 
-**URL**: https://lovable.dev/projects/ff6c9b26-359c-4546-95ce-77ec8646ab57
+QuantSuite isn't a "tool." It's the **operating system of financial dominance**. It is a unified, high-octane intelligence layer that connects global geopolitical volatility to institutional-grade execution.
 
-## How can I edit this code?
+## ⚡ THE CORE THESIS
+Markets are not isolated events. They are sentient systems reacting to a connected world. Existing tools show you data; QuantSuite shows you **how the world moves the market**.
 
-There are several ways of editing your application.
+## 🧬 SYSTEM ARCHITECTURE (INSTITUTIONAL GRADE)
 
-**Use Lovable**
-
-Simply visit the [Lovable Project](https://lovable.dev/projects/ff6c9b26-359c-4546-95ce-77ec8646ab57) and start prompting.
-
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+```mermaid
+graph TD
+    WORLD[🌍 WORLD: The Pulse] -->|Geopolitical Events| MARKET[📊 MARKET: Market Maw]
+    MARKET -->|Sentiment & Flow| QUANT[🧠 QUANT: Engine + Greeks]
+    QUANT -->|Exposure Models| PORTFOLIO[🛡️ PORTFOLIO: Athena]
+    PORTFOLIO -->|Risk Guardrails| DECISION[🔥 DECISION: Strategy Advisor]
+    DECISION -->|Alpha Generation| ACTION[💸 ACTION: Terminal]
+    ACTION -.->|Live Feedback| WORLD
 ```
 
-**Edit a file directly in GitHub**
+## 🛠️ MODULES OF DOMINANCE
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### 🔴 THE PULSE (World-to-Market Engine)
+Real-time, vertically-integrated intelligence feed. Maps conflict zones, trade route disruptions, and central bank shifts directly to asset class volatility.
 
-**Use GitHub Codespaces**
+### 🐊 MARKET MAW (Deep Liquid Flow)
+FinBERT-powered sentiment analysis. It doesn't just read the news; it feels the institutional heat. Captures flows before they hit the retail tape.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### 🛡️ ATHENA (The Iron Guard)
+Institutional Risk Management. VaR, CVaR, Monte Carlo simulations, and factor decomposition. Athena protects your capital with a zero-tolerance policy for sloppy risk.
 
-## What technologies are used for this project?
+### 🔥 STRATEGY ADVISOR (Alpha Factory)
+Quant-based strategy generation. Cold, surgical, and execution-obsessed. Generates backtestable Python code for regimes that most traders fear.
 
-This project is built with:
+## 🚀 DEPLOYMENT
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### STANDALONE SETUP
+1. **Clone the machine**:
+   ```bash
+   git clone [REDACTED]
+   ```
+2. **Ignite the dependencies**:
+   ```bash
+   npm install --legacy-peer-deps
+   ```
+3. **Launch the Engine**:
+   ```bash
+   npm run dev
+   ```
 
-## How can I deploy this project?
+### ENVIRONMENT SECURITY
+The machine requires the following high-security keys in your `.env` or Supabase secrets:
+- `SYSTEM_AI_API_KEY`: The brain behind the intelligence.
+- `SUPABASE_SERVICE_ROLE_KEY`: Institutional access layer.
 
-Simply open [Lovable](https://lovable.dev/projects/ff6c9b26-359c-4546-95ce-77ec8646ab57) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+---
+**QuantSuite © 2026. FOR THE 1% WHO DECIDE THE FUTURE.**
+*"Most traders are deaf. QuantSuite makes you hear everything."*

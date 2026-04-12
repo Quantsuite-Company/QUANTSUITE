@@ -84,7 +84,15 @@ function genVolSignals(prices: number[], lb: number): ('BUY'|'SELL'|'HOLD')[] {
 
 export function runBacktest(prices: number[], config: BacktestConfig, cap: number = 100000): BacktestResult {
   const sigFn = { MOMENTUM: genMomentumSignals, MEAN_REVERSION: genMeanRevSignals, BREAKOUT: genBreakoutSignals, VOLATILITY: genVolSignals };
-  const signals = (sigFn[config.entrySignal] || genMomentumSignals)(prices, config.lookbackPeriod);
+  
+  // Deterministic seed based on strategy geometry
+  const seed = (config.strategyName || "Null").split('').reduce((a, b) => (((a << 5) - a) + b.charCodeAt(0)) | 0, 0) 
+               + (config.takeProfit * 100) + (config.stopLoss * 100);
+  const rng = (s: number) => { let x = Math.sin(s) * 10000; return x - Math.floor(x); };
+  
+  // Use pure institutional historical prices directly without simulation noise
+  const actualPrices = prices;
+  const signals = (sigFn[config.entrySignal] || genMomentumSignals)(actualPrices, config.lookbackPeriod);
   const trades: BacktestTrade[] = [];
   let eq = cap;
   let pos: { ep: number; ed: number; t: 'LONG'|'SHORT' } | null = null;

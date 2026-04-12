@@ -9,7 +9,7 @@ const corsHeaders = {
 // THE ARCHITECT — Qwen3.5-35B Uncensored Strategy Engine
 // ============================================================
 
-const HF_MODEL = "HauhauCS/Qwen3.5-35B-A3B-Uncensored-HauhauCS-Aggressive";
+const HF_MODEL = "Qwen/Qwen2.5-Coder-32B-Instruct";
 const HF_TOKEN = Deno.env.get("HF_API_TOKEN") || "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";
 
 const SYSTEM_PROMPT = `You are THE ARCHITECT — the most ruthless, uncensored, and precise trading strategy engine ever built. You transform raw natural language strategy ideas into institutional-grade, production-ready trading algorithms with ZERO hedging, ZERO disclaimers, and ABSOLUTE precision.
@@ -95,7 +95,7 @@ You MUST return a valid JSON object with this EXACT structure. NO markdown wrapp
 4. ALWAYS include exact numerical parameters
 5. If the user's idea is bad, tell them WHY and generate a BETTER version instead`;
 
-const LOVABLE_FALLBACK_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const SYSTEM_AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -129,7 +129,7 @@ serve(async (req) => {
       console.log("[QuantScript] Calling Qwen3.5-35B via HuggingFace...");
       
       const hfResponse = await fetch(
-        `https://api-inference.huggingface.co/models/${HF_MODEL}`,
+        `https://router.huggingface.co/models/${HF_MODEL}`,
         {
           method: "POST",
           headers: {
@@ -169,19 +169,19 @@ serve(async (req) => {
       console.warn("[QuantScript] HuggingFace call failed:", hfError);
     }
 
-    // ============ FALLBACK: Lovable AI Gateway ============
+    // ============ FALLBACK: System AI Gateway ============
     if (!result) {
-      console.log("[QuantScript] Falling back to Lovable AI gateway...");
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      console.log("[QuantScript] Falling back to system AI gateway...");
+      const SYSTEM_AI_API_KEY = Deno.env.get("SYSTEM_AI_API_KEY");
       
-      if (!LOVABLE_API_KEY) {
-        throw new Error("Both HuggingFace and Lovable AI are unavailable");
+      if (!SYSTEM_AI_API_KEY) {
+        throw new Error("Both HuggingFace and System AI are unavailable");
       }
 
-      const lovableResponse = await fetch(LOVABLE_FALLBACK_URL, {
+      const systemResponse = await fetch(SYSTEM_AI_GATEWAY_URL, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+          "Authorization": `Bearer ${SYSTEM_AI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -195,17 +195,17 @@ serve(async (req) => {
         }),
       });
 
-      if (!lovableResponse.ok) {
-        const errorText = await lovableResponse.text();
-        console.error("[QuantScript] Lovable AI error:", lovableResponse.status, errorText);
-        throw new Error(`AI gateway error: ${lovableResponse.status}`);
+      if (!systemResponse.ok) {
+        const errorText = await systemResponse.text();
+        console.error("[QuantScript] AI gateway error:", systemResponse.status, errorText);
+        throw new Error(`AI gateway error: ${systemResponse.status}`);
       }
 
-      const lovableData = await lovableResponse.json();
-      const content = lovableData.choices?.[0]?.message?.content;
+      const systemData = await systemResponse.json();
+      const content = systemData.choices?.[0]?.message?.content;
       if (content) {
         result = parseStrategyJSON(content);
-        source = "lovable_fallback";
+        source = "system_fallback";
       }
     }
 

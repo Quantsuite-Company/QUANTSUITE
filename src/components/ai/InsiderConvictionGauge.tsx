@@ -54,8 +54,16 @@ export const InsiderConvictionGauge: React.FC<InsiderConvictionGaugeProps> = ({ 
             <div className="absolute bottom-0 left-0 text-[10px] font-bold text-chart-loss opacity-50">SELL</div>
             <div className="absolute bottom-0 right-0 text-[10px] font-bold text-chart-profit opacity-50">BUY</div>
 
-            {/* Progress Arch */}
-            <svg className="absolute inset-0 w-48 h-48 -rotate-90 origin-center" viewBox="0 0 100 100">
+            {/* Progress Arch with Neon Coloring */}
+            <svg className="absolute inset-0 w-48 h-48 origin-center" style={{ transform: 'rotate(-180deg)' }} viewBox="0 0 100 100">
+              <defs>
+                <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#ef4444" />       {/* Red */}
+                  <stop offset="40%" stopColor="#f59e0b" />      {/* Amber */}
+                  <stop offset="60%" stopColor="#10b981" />      {/* Emerald */}
+                  <stop offset="100%" stopColor="#06b6d4" />     {/* Cyan */}
+                </linearGradient>
+              </defs>
               <circle
                 cx="50"
                 cy="50"
@@ -64,20 +72,21 @@ export const InsiderConvictionGauge: React.FC<InsiderConvictionGaugeProps> = ({ 
                 stroke="currentColor"
                 strokeWidth="12"
                 strokeDasharray="138 276"
-                className={`${stats.color} opacity-20`}
+                className="text-white/10"
               />
               <motion.circle
                 cx="50"
                 cy="50"
                 r="44"
                 fill="none"
-                stroke="currentColor"
+                stroke="url(#neonGradient)"
                 strokeWidth="12"
                 strokeDasharray={`${(stats.score / 100) * 138} 276`}
-                className={stats.color}
                 initial={{ strokeDasharray: "0 276" }}
                 animate={{ strokeDasharray: `${(stats.score / 100) * 138} 276` }}
                 transition={{ duration: 1.5, ease: "easeOut" }}
+                className="drop-shadow-[0_0_10px_currentColor]"
+                style={{ color: stats.color === "text-chart-profit" ? "#10b981" : "#ef4444" }}
               />
             </svg>
 

@@ -2,18 +2,12 @@ import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, ExternalLink, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
-import { InsiderAdvancedFilters } from "@/components/InsiderAdvancedFilters";
-import { StockSummaryView } from "@/components/StockSummaryView";
-import { InsiderDashboardMetrics } from "@/components/InsiderDashboardMetrics";
-import { TerminalTable, ColumnDef } from "@/components/tables";
-import { TerminalBarChart, ChartContainer, chartColors } from "@/components/charts";
 import { InsiderConvictionGauge } from "@/components/ai/InsiderConvictionGauge";
 import { CongressLeaderboard } from "@/components/ai/CongressLeaderboard";
 import { GlassCard } from "@/components/ui/glass-card";
@@ -152,104 +146,7 @@ export default function InsiderStreet() {
       .slice(-20);
   }, [insiderTrades]);
 
-  // Table columns for insider trades
-  const insiderColumns: ColumnDef<InsiderTrade>[] = [
-    { key: 'filer', header: 'Filer', sortable: true },
-    { 
-      key: 'ticker', 
-      header: 'Ticker', 
-      sortable: true,
-      render: (_, row) => (
-        <Badge variant="outline" className="font-mono">{row.ticker}</Badge>
-      )
-    },
-    { 
-      key: 'type', 
-      header: 'Type', 
-      sortable: true,
-      render: (_, row) => (
-        <Badge 
-          variant={row.type === "Buy" ? "default" : "destructive"}
-          className={row.type === "Buy" ? "bg-chart-profit text-white" : ""}
-        >
-          {row.type}
-        </Badge>
-      )
-    },
-    { 
-      key: 'shares', 
-      header: 'Shares', 
-      sortable: true, 
-      align: 'right',
-      render: (val) => val > 0 ? val.toLocaleString() : "-"
-    },
-    { 
-      key: 'price', 
-      header: 'Price', 
-      sortable: true, 
-      align: 'right',
-      render: (val) => val > 0 ? `$${val.toFixed(2)}` : "-"
-    },
-    { 
-      key: 'value', 
-      header: 'Value', 
-      sortable: true, 
-      align: 'right',
-      render: (val) => val > 0 ? `$${val.toLocaleString()}` : "-"
-    },
-    { key: 'date', header: 'Date', sortable: true },
-    { 
-      key: 'formUrl', 
-      header: 'Form',
-      render: (_, row) => (
-        <a
-          href={row.formUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-primary hover:underline flex items-center gap-1"
-        >
-          View <ExternalLink className="w-3 h-3" />
-        </a>
-      )
-    },
-  ];
-
-  // Table columns for congress trades
-  const congressColumns: ColumnDef<CongressTrade>[] = [
-    { key: 'member', header: 'Member', sortable: true },
-    { 
-      key: 'party', 
-      header: 'Party', 
-      sortable: true,
-      render: (val) => (
-        <Badge 
-          variant="outline"
-          className={val === "Democrat" ? "border-blue-500 text-blue-400" : "border-red-500 text-red-400"}
-        >
-          {val}
-        </Badge>
-      )
-    },
-    { key: 'chamber', header: 'Chamber', sortable: true },
-    { 
-      key: 'ticker', 
-      header: 'Ticker', 
-      sortable: true,
-      render: (val) => <Badge variant="outline" className="font-mono">{val}</Badge>
-    },
-    { 
-      key: 'action', 
-      header: 'Action', 
-      sortable: true,
-      render: (val) => (
-        <Badge variant={val === "Purchase" ? "default" : "secondary"}>
-          {val}
-        </Badge>
-      )
-    },
-    { key: 'amount', header: 'Amount', sortable: true },
-    { key: 'date', header: 'Date', sortable: true },
-  ];
+  // Table columns obsolete and removed
 
   if (insiderLoading || congressLoading) {
     return (
@@ -281,180 +178,174 @@ export default function InsiderStreet() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-8 min-h-screen bg-transparent">
-      {/* Top Level Desk / Institutional Header */}
+    <div className="container mx-auto p-6 space-y-6 max-w-screen-xl overflow-x-hidden">
+      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="space-y-6"
+        transition={{ duration: 0.5 }}
       >
-        <div className="flex items-end justify-between border-b border-border/20 pb-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 text-primary font-bold tracking-[0.2em] text-[10px] uppercase">
-              <Ticket className="w-3 h-3" /> Live Intelligence Feed
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 pb-4 border-b border-border/20">
+          <div>
+            <div className="flex items-center gap-2 text-primary text-xs font-semibold uppercase tracking-wide mb-1">
+              <Ticket className="w-4 h-4" /> Live Intelligence Feed
             </div>
-            <h1 className="text-5xl font-extrabold font-serif tracking-tight text-foreground">
+            <h1 className="text-3xl font-extrabold tracking-tight">
               Insider Street<span className="text-primary">.</span>
             </h1>
-            <p className="text-muted-foreground font-serif italic text-sm">
-              "The Secret Holy Grail of Institutional Alpha Tracking"
+            <p className="text-muted-foreground text-sm mt-1">
+              Institutional Alpha Tracking — SEC Form 4 & Congressional Disclosures
             </p>
           </div>
-          
-          <div className="flex items-center gap-4">
-            <div className="text-right hidden md:block">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Global Synchronization</p>
-              <p className="text-xs font-mono text-primary">{new Date().toUTCString().split(' ')[4]} UTC</p>
-            </div>
-            <Button 
-              onClick={handleRefresh} 
-              disabled={refreshing} 
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground font-mono">{new Date().toUTCString().split(' ')[4]} UTC</span>
+            <Button
+              onClick={handleRefresh}
+              disabled={refreshing}
               variant="outline"
-              className="border-primary/20 hover:bg-primary/5 font-bold uppercase text-[10px] tracking-widest h-10 px-6 rounded-none border-2"
+              size="sm"
             >
               <RefreshCw className={`w-3 h-3 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-              Sync Terminals
+              Refresh
             </Button>
-          </div>
-        </div>
-
-        {/* Live Disclosure Ticker Tape */}
-        <div className="w-full bg-muted/10 border-y border-border/10 py-2 overflow-hidden relative group">
-          <div className="absolute left-0 top-0 bottom-0 w-20 bg-gradient-to-r from-background to-transparent z-10" />
-          <div className="absolute right-0 top-0 bottom-0 w-20 bg-gradient-to-l from-background to-transparent z-10" />
-          
-          <motion.div 
-            className="flex whitespace-nowrap gap-8"
-            animate={{ x: [0, -2000] }}
-            transition={{ duration: 40, repeat: Infinity, ease: "linear" }}
-          >
-            {[...insiderTrades, ...insiderTrades].slice(0, 20).map((t, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <Badge variant="outline" className="font-mono text-[10px] bg-background/50">{t.ticker}</Badge>
-                <span className={`text-[10px] font-bold ${t.type === 'Buy' ? 'text-chart-profit' : 'text-chart-loss'}`}>
-                  {t.type === 'Buy' ? '▲' : '▼'} {t.type}
-                </span>
-                <span className="text-[10px] text-muted-foreground font-serif">${(t.value / 1000).toFixed(0)}k</span>
-                <Separator orientation="vertical" className="h-3 mx-2 bg-border/30" />
-              </div>
-            ))}
-          </motion.div>
-        </div>
-
-        {/* The "Desk" - Grid of high-impact visuals */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-1">
-            <InsiderConvictionGauge trades={insiderTrades} />
-          </div>
-          <div className="lg:col-span-2">
-            <CongressLeaderboard trades={congressTrades} />
           </div>
         </div>
       </motion.div>
 
-      <Tabs defaultValue="openinsider" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 bg-muted/10 border-border/20 p-1">
-          <TabsTrigger value="openinsider" className="font-bold tracking-tight py-2">SEC Form 4</TabsTrigger>
-          <TabsTrigger value="quiver" className="font-bold tracking-tight py-2">Congress Disclosures</TabsTrigger>
-          <TabsTrigger value="trends" className="font-bold tracking-tight py-2">Historical Trends</TabsTrigger>
-          <TabsTrigger value="summary" className="font-bold tracking-tight py-2">Asset Summary</TabsTrigger>
-        </TabsList>
+      {/* Ticker Tape — contained with overflow-hidden */}
+      <div className="w-full bg-muted/5 border border-border/10 rounded-lg py-2 overflow-hidden relative">
+        <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent z-10" />
+        <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background to-transparent z-10" />
+        <motion.div
+          className="flex gap-8 whitespace-nowrap"
+          animate={{ x: ["0%", "-50%"] }}
+          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
+        >
+          {[...insiderTrades, ...insiderTrades].slice(0, 30).map((t, i) => (
+            <span key={i} className="inline-flex items-center gap-2 text-sm shrink-0">
+              <span className="font-mono font-bold text-foreground">{t.ticker}</span>
+              <span className={`font-mono font-semibold ${t.type === 'Buy' ? 'text-emerald-500' : 'text-red-500'}`}>
+                {t.type === 'Buy' ? '▲' : '▼'} ${(t.value / 1e6).toFixed(1)}M
+              </span>
+            </span>
+          ))}
+        </motion.div>
+      </div>
 
-        <TabsContent value="openinsider" className="space-y-4">
-          <InsiderAdvancedFilters 
-            filters={filters}
-            onFilterChange={setFilters}
-            onReset={resetFilters}
-          />
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.4 }}
-          >
-            <ChartContainer 
-              title="Insider Filings (SEC Form 4)"
-              subtitle={`Latest Form 4 transactions from SEC EDGAR • Updated: ${insiderData?.lastUpdated ? new Date(insiderData.lastUpdated).toLocaleString() : "N/A"}`}
-              height="auto"
+      {/* Search */}
+      <Input
+        placeholder="Search by ticker or name..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className="max-w-md"
+      />
+
+      {/* Gauge + Leaderboard */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-1">
+          <InsiderConvictionGauge trades={insiderTrades} />
+        </div>
+        <div className="lg:col-span-2">
+          <CongressLeaderboard trades={congressTrades} />
+        </div>
+      </div>
+
+      {/* SEC Form 4 Trades */}
+      <div>
+        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+          SEC Form 4 — C-Suite / Whale Activity
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredInsider.slice(0, 30).map((trade, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03 }}
+              className="relative bg-card/30 backdrop-blur border border-border/20 rounded-lg p-4 hover:border-border/50 transition-colors group"
             >
-              <div className="space-y-4">
-                <Input
-                  placeholder="Filter by ticker or filer..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="max-w-md bg-background/50"
-                />
-                <TerminalTable
-                  data={filteredInsider.slice(0, 50)}
-                  columns={insiderColumns}
-                  emptyMessage="No insider trades found"
-                  pageSize={15}
-                />
+              <div className="flex items-center justify-between mb-2">
+                <Badge variant="outline" className={`font-mono ${trade.type === 'Buy' ? 'text-emerald-500 border-emerald-500/30' : 'text-red-500 border-red-500/30'}`}>
+                  {trade.ticker} · {trade.type}
+                </Badge>
+                <span className="text-xs text-muted-foreground">{trade.date}</span>
               </div>
-            </ChartContainer>
-          </motion.div>
-        </TabsContent>
-
-        <TabsContent value="quiver" className="space-y-4">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.4 }}
-          >
-            <ChartContainer 
-              title="Congress Trades"
-              subtitle={`Recent trades from House & Senate members • Source: ${congressData?.source || "N/A"}`}
-              height="auto"
-            >
-              <div className="space-y-4">
-                <Input
-                  placeholder="Filter by ticker or member..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="max-w-md bg-background/50"
-                />
-                <TerminalTable
-                  data={filteredCongress}
-                  columns={congressColumns}
-                  emptyMessage="No congress trades found"
-                  pageSize={15}
-                />
+              <p className="text-sm font-medium truncate mb-3">
+                {trade.filer.split(' at ')[0]?.split(' - ')[0] || trade.filer}
+              </p>
+              <div className="flex items-end justify-between pt-2 border-t border-border/10">
+                <div>
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Value</div>
+                  <div className={`font-mono text-lg font-bold ${trade.type === 'Sell' ? 'text-red-500' : 'text-emerald-500'}`}>
+                    ${trade.value.toLocaleString()}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Shares</div>
+                  <div className="font-mono text-sm">{trade.shares.toLocaleString()} @ ${trade.price.toFixed(2)}</div>
+                </div>
               </div>
-            </ChartContainer>
-          </motion.div>
-        </TabsContent>
+              <a href={trade.formUrl} target="_blank" rel="noreferrer" className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+              </a>
+            </motion.div>
+          ))}
+        </div>
+        {filteredInsider.length === 0 && (
+          <p className="text-muted-foreground text-center py-8">No insider trades match your search.</p>
+        )}
+      </div>
 
-        <TabsContent value="trends" className="space-y-4">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.4 }}
-          >
-            <TerminalBarChart
-              data={trendsChartData}
-              bars={[
-                { dataKey: 'buyValue', name: 'Buy Volume ($M)', color: chartColors.profit },
-                { dataKey: 'sellValue', name: 'Sell Volume ($M)', color: chartColors.loss },
-              ]}
-              xAxisKey="date"
-              title="Insider Transaction Volume"
-              subtitle="Daily buy vs sell volume in millions"
-              height={350}
-              yAxisFormatter={(val) => `$${val.toFixed(1)}M`}
-            />
-          </motion.div>
-        </TabsContent>
-
-        <TabsContent value="summary" className="space-y-4">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.4 }}
-          >
-            <StockSummaryView trades={insiderTrades} />
-          </motion.div>
-        </TabsContent>
-      </Tabs>
+      {/* Congressional Trades */}
+      <div>
+        <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-fuchsia-500" />
+          Congressional Disclosures
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredCongress.slice(0, 30).map((trade, i) => {
+            const isDem = trade.party === 'Democrat';
+            return (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.03 }}
+                className="relative bg-card/30 backdrop-blur border border-border/20 rounded-lg p-4 hover:border-border/50 transition-colors group"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="outline" className="font-mono">{trade.ticker}</Badge>
+                  <Badge variant="outline" className={`text-xs ${isDem ? 'text-cyan-400 border-cyan-500/30' : 'text-fuchsia-400 border-fuchsia-500/30'}`}>
+                    {trade.party} · {trade.chamber}
+                  </Badge>
+                </div>
+                <p className="text-sm font-medium truncate mb-1">{trade.member}</p>
+                <p className="text-xs text-muted-foreground mb-3">{trade.date}</p>
+                <div className="flex items-end justify-between pt-2 border-t border-border/10">
+                  <div>
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Action</div>
+                    <div className={`font-mono text-sm font-bold ${trade.action === 'Purchase' ? 'text-emerald-500' : 'text-amber-400'}`}>
+                      {trade.action}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] text-muted-foreground uppercase tracking-wide">Amount</div>
+                    <div className="font-mono text-sm">{trade.amount}</div>
+                  </div>
+                </div>
+                <a href={trade.disclosure_url} target="_blank" rel="noreferrer" className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <ExternalLink className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground" />
+                </a>
+              </motion.div>
+            );
+          })}
+        </div>
+        {filteredCongress.length === 0 && (
+          <p className="text-muted-foreground text-center py-8">No congressional trades match your search.</p>
+        )}
+      </div>
     </div>
   );
 }
+

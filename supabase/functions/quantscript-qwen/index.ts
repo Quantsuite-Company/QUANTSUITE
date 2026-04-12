@@ -103,7 +103,7 @@ You MUST return a valid JSON object with this EXACT structure. NO markdown wrapp
 4. ALWAYS include exact numerical parameters — never "around 10%" but "exactly 10%"
 5. If the user's idea is bad, tell them WHY it's bad and generate a BETTER version instead`;
 
-const LOVABLE_FALLBACK_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const SYSTEM_AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -177,19 +177,19 @@ serve(async (req) => {
       console.warn("[QuantScript] HuggingFace call failed:", hfError);
     }
 
-    // ============ FALLBACK: Lovable AI Gateway ============
+    // ============ FALLBACK: System AI Gateway ============
     if (!result) {
-      console.log("[QuantScript] Falling back to Lovable AI gateway...");
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+      console.log("[QuantScript] Falling back to system AI gateway...");
+      const SYSTEM_AI_API_KEY = Deno.env.get("SYSTEM_AI_API_KEY");
       
-      if (!LOVABLE_API_KEY) {
-        throw new Error("Both HuggingFace and Lovable AI are unavailable");
+      if (!SYSTEM_AI_API_KEY) {
+        throw new Error("Both HuggingFace and System AI are unavailable");
       }
 
-      const lovableResponse = await fetch(LOVABLE_FALLBACK_URL, {
+      const systemResponse = await fetch(SYSTEM_AI_GATEWAY_URL, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+          "Authorization": `Bearer ${SYSTEM_AI_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -203,17 +203,17 @@ serve(async (req) => {
         }),
       });
 
-      if (!lovableResponse.ok) {
-        const errorText = await lovableResponse.text();
-        console.error("[QuantScript] Lovable AI error:", lovableResponse.status, errorText);
-        throw new Error(`AI gateway error: ${lovableResponse.status}`);
+      if (!systemResponse.ok) {
+        const errorText = await systemResponse.text();
+        console.error("[QuantScript] AI gateway error:", systemResponse.status, errorText);
+        throw new Error(`AI gateway error: ${systemResponse.status}`);
       }
 
-      const lovableData = await lovableResponse.json();
-      const content = lovableData.choices?.[0]?.message?.content;
+      const systemData = await systemResponse.json();
+      const content = systemData.choices?.[0]?.message?.content;
       if (content) {
         result = parseStrategyJSON(content);
-        source = "lovable_fallback";
+        source = "system_fallback";
       }
     }
 

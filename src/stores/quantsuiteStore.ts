@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { PulseEvent, PulseSignal } from '@/lib/pulseEventEngine';
+
 
 export type Theme = 'dark' | 'light' | 'system';
 export type MarketStatus = 'open' | 'closed' | 'pre-market' | 'post-market';
@@ -50,8 +52,14 @@ interface QuantSuiteState {
   currency: string;
   locale: string;
   
-  // Unified Alert Bus
+  // Unified Alert Bus (legacy)
   sharedAlerts: Array<{ id: string; message: string; timestamp: number; source: string; level: 'info' | 'warning' | 'critical' }>;
+  
+  // Pulse Intelligence System
+  pulseSignals: PulseSignal[];
+  activePulseEvents: PulseEvent[];
+  geopoliticalRiskIndex: number;
+
   
   // Actions
   setTheme: (theme: Theme) => void;
@@ -68,6 +76,11 @@ interface QuantSuiteState {
   // Alert Bus Actions
   addSharedAlert: (alert: Omit<QuantSuiteState['sharedAlerts'][0], 'id' | 'timestamp'>) => void;
   clearSharedAlerts: () => void;
+  
+  // Pulse Actions
+  dispatchPulseEvents: (events: PulseEvent[], signals: PulseSignal[], riskIndex: number) => void;
+  clearPulseSignals: () => void;
+
   
   // Onboarding Actions
   setExperienceLevel: (level: ExperienceLevel) => void;
@@ -98,6 +111,10 @@ export const useQuantSuiteStore = create<QuantSuiteState>()(
       currency: 'USD',
       locale: 'en-US',
       sharedAlerts: [],
+      pulseSignals: [],
+      activePulseEvents: [],
+      geopoliticalRiskIndex: 0,
+
       
       // Actions
       setTheme: (theme) => set({ theme }),
@@ -143,6 +160,23 @@ export const useQuantSuiteStore = create<QuantSuiteState>()(
       })),
       
       clearSharedAlerts: () => set({ sharedAlerts: [] }),
+      
+      // Pulse Intelligence Actions
+      dispatchPulseEvents: (events, signals, riskIndex) => set({
+        activePulseEvents: events,
+        pulseSignals: signals,
+        geopoliticalRiskIndex: riskIndex,
+        // Also update legacy sharedAlerts for backward compat
+        sharedAlerts: signals.map(s => ({
+          id: s.id,
+          message: s.message,
+          timestamp: s.timestamp,
+          source: s.source,
+          level: s.level,
+        })),
+      }),
+      clearPulseSignals: () => set({ pulseSignals: [], activePulseEvents: [], geopoliticalRiskIndex: 0 }),
+
       
       // Onboarding Actions
       setExperienceLevel: (level) => set({ experienceLevel: level }),

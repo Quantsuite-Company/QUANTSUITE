@@ -3,11 +3,14 @@ import { motion } from 'framer-motion';
 import {
   ArrowLeft, Shield, Zap, AlertTriangle, Check, X, RefreshCw,
   TrendingUp, TrendingDown, Clock, Target, Code2,
-  ChevronDown, ChevronUp, Play, Brain, BarChart3
+  ChevronDown, ChevronUp, Play, Brain, BarChart3, FileText
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { runBacktest, type BacktestConfig, type BacktestResult } from '@/lib/backtestEngine';
+import { Highlight } from "prism-react-renderer";
+import { format as formatDt } from "date-fns";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 // ============================================================
 // TYPE DEFINITIONS
@@ -70,40 +73,82 @@ function RiskGauge({ label, value, maxVal, format, color }: {
   label: string; value: number; maxVal: number; format: (v: number) => string; color: [string, string];
 }) {
   const ratio = Math.min(Math.abs(value) / maxVal, 1);
-  const size = 110;
-  const strokeWidth = 8;
-  const r = (size - strokeWidth) / 2;
+  const size = 120;
+  const strokeWidth = 12;
+  const r = (size - strokeWidth) / 2 - 4;
   const circumference = 2 * Math.PI * r;
   const arcLength = circumference * 0.75;
   const dashOffset = arcLength * (1 - ratio);
   const gradId = `rg-${label.replace(/\s/g, '')}`;
 
   return (
-    <div className="flex flex-col items-center">
-      <svg viewBox={`0 0 ${size} ${size}`} className="w-24 h-24">
-        <defs>
-          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={color[0]} />
-            <stop offset="100%" stopColor={color[1]} />
-          </linearGradient>
-        </defs>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth}
-          strokeLinecap="round" strokeDasharray={`${arcLength} ${circumference}`} transform={`rotate(135 ${size/2} ${size/2})`} />
-        <motion.circle cx={size/2} cy={size/2} r={r} fill="none" stroke={`url(#${gradId})`} strokeWidth={strokeWidth}
-          strokeLinecap="round" strokeDasharray={`${arcLength} ${circumference}`}
-          initial={{ strokeDashoffset: arcLength }}
-          animate={{ strokeDashoffset: dashOffset }}
-          transition={{ duration: 1.2, ease: 'easeOut' }}
-          transform={`rotate(135 ${size/2} ${size/2})`}
-          style={{ filter: `drop-shadow(0 0 6px ${color[0]}40)` }}
-        />
-        <text x={size/2} y={size/2-2} textAnchor="middle" dominantBaseline="middle" className="text-sm font-bold font-mono fill-white">
+    <div className="flex flex-col items-center justify-center p-2">
+      <div className="relative w-28 h-28 flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.03] to-transparent rounded-full shadow-[inset_0_4px_20px_rgba(0,0,0,0.5)]" />
+        <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full absolute drop-shadow-2xl">
+          <defs>
+            <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={color[0]} />
+              <stop offset="100%" stopColor={color[1]} />
+            </linearGradient>
+            <filter id={`glow-${gradId}`} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+          <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.03)" strokeWidth={strokeWidth}
+            strokeLinecap="round" strokeDasharray={`${arcLength} ${circumference}`} transform={`rotate(135 ${size/2} ${size/2})`} />
+          <motion.circle cx={size/2} cy={size/2} r={r} fill="none" stroke={`url(#${gradId})`} strokeWidth={strokeWidth}
+            strokeLinecap="round" strokeDasharray={`${arcLength} ${circumference}`}
+            initial={{ strokeDashoffset: arcLength }}
+            animate={{ strokeDashoffset: dashOffset }}
+            transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+            transform={`rotate(135 ${size/2} ${size/2})`}
+            filter={`url(#glow-${gradId})`}
+          />
+        </svg>
+        <span className="relative z-10 text-lg font-bold font-mono tracking-tight text-white drop-shadow-lg">
           {format(value)}
-        </text>
-      </svg>
-      <span className="text-[9px] text-white/40 tracking-widest uppercase mt-1">{label}</span>
+        </span>
+      </div>
+      <span className="text-[10px] font-bold text-white/50 tracking-[0.2em] uppercase mt-3">{label}</span>
     </div>
   );
+}
+
+// ============================================================
+// RETAIL TRANSLATION ENGINE (Wolf of Wall Street Persona)
+// ============================================================
+function getRetailSummary(result: BacktestResult) {
+  const isLoss = result.totalReturn < 0;
+  const isDangerous = result.maxDrawdown > 20;
+  const isGodTier = result.sharpeRatio > 2;
+
+  let text = "Okay listen up, kid. Here is what these numbers actually mean. ";
+  
+  if (isLoss) {
+    text += `First off, you bleed money on this setup. A ${result.totalReturn.toFixed(1)}% drop means you are giving your capital away to guys like me. `;
+  } else {
+    text += `We pulled a nice ${result.totalReturn.toFixed(1)}% total return. In Wall Street terms, that means the strategy actually hunts and prints cash. `;
+  }
+
+  if (isGodTier) {
+    text += `The Sharpe Ratio is pushing ${result.sharpeRatio.toFixed(2)}. Anything over 1.0 means you're getting paid nicely for the risk you're taking, but over 2.0? That is heavy hedge-fund territory. You're barely sweating for every dollar you make. `;
+  } else if (result.sharpeRatio > 0.5) {
+    text += `A Sharpe of ${result.sharpeRatio.toFixed(2)} means we are making money, but you're taking standard market bumps to get there. `;
+  } else {
+    text += `Your Sharpe ratio is a miserable ${result.sharpeRatio.toFixed(2)}. You are taking on way too much stress for the pennies you're picking up in front of the steamroller. `;
+  }
+
+  if (isDangerous) {
+    text += `Now let's talk about the gut-punch: your Max Drawdown. At one point, your account bled out -${result.maxDrawdown.toFixed(1)}%. That is brutal. Most retail guys throw up and sell the bottom when they see their account drop 20%. You need a stomach of iron to run this, or you need to tighten those stop-losses immediately. `;
+  } else {
+    text += `The best part? Your Max Drawdown was only -${result.maxDrawdown.toFixed(1)}%. That's the maximum pain you felt from peak to trough. Very comfortable ride, meaning you can actually sleep at night running this algo. `;
+  }
+
+  text += `We hit a win rate of ${result.winRate.toFixed(0)}%. You don't need a 90% win rate to be rich, you just need your average wins (+${result.avgWin.toFixed(1)}%) to completely bury your average losses (${result.avgLoss.toFixed(1)}%). Proceed with caution, and don't over-leverage.`;
+
+  return text;
 }
 
 // ============================================================
@@ -159,30 +204,25 @@ export function StrategyReport({ strategy, config, onReset, modelSource, origina
     }
   };
 
-  // NLP Explainer — pure logic summary
+  // NLP Explainer — Aggressive PM Tone
   const nlpSummary = useMemo(() => {
     const s = strat;
     if (!s) return '';
-    const entryCount = s.entry_rules?.length || 0;
-    const exitCount = s.exit_rules?.length || 0;
     const rr = riskParams.risk_reward_ratio || 'N/A';
 
-    let text = `**${s.name}** is a ${s.timeframe || 'daily'} strategy `;
-    text += `designed for ${s.market_conditions || 'general market conditions'}. `;
-    text += `It uses ${entryCount} entry rule${entryCount !== 1 ? 's' : ''} and ${exitCount} exit rule${exitCount !== 1 ? 's' : ''} `;
-    text += `with a risk/reward ratio of ${rr}. `;
+    let text = `Listen up. We are deploying **${s.name}** across the board. This is a ${s.timeframe || 'daily'} timeframe execution designed strictly for ${s.market_conditions || 'current market environments'}. The logic here is absolute: we operate on ${s.entry_rules?.length || 0} entry triggers and ${s.exit_rules?.length || 0} hard exits to secure a non negotiable risk reward profile of ${rr}. `;
 
-    if (s.philosophy) text += `\n\n**Core thesis**: ${s.philosophy} `;
-
-    if (explanation?.edge) text += `\n\n**The edge**: ${explanation.edge} `;
-    if (explanation?.when_it_works) text += `\n\n**Sweet spot**: ${explanation.when_it_works} `;
-    if (explanation?.when_it_fails) text += `\n\n**Failure mode**: ${explanation.when_it_fails} `;
+    if (s.philosophy) text += `\n\n**The Thesis:** ${s.philosophy} `;
+    
+    if (explanation?.edge) text += `\n\n**Where we get our edge:** We exploit this aggressively. ${explanation.edge} `;
+    if (explanation?.when_it_works) text += `\n\n**Capitalization Targets:** This prints money specifically ${explanation.when_it_works.replace(/^(when |during |in )/i, "during ")} `;
+    if (explanation?.when_it_fails) text += `\n\n**Where we bleed:** We cut our losses immediately if ${explanation.when_it_fails} `;
 
     if (metrics_expected) {
-      text += `\n\n**Expected performance**: `;
-      if (metrics_expected.target_sharpe) text += `Sharpe ${metrics_expected.target_sharpe}, `;
-      if (metrics_expected.target_win_rate) text += `Win Rate ${metrics_expected.target_win_rate}, `;
-      if (metrics_expected.expected_cagr) text += `CAGR ${metrics_expected.expected_cagr}.`;
+      text += `\n\n**Performance Mandate:** `;
+      if (metrics_expected.target_sharpe) text += `We demand a Sharpe ratio holding above ${metrics_expected.target_sharpe}. `;
+      if (metrics_expected.expected_cagr) text += `CAGR targets are locked at ${metrics_expected.expected_cagr}. `;
+      text += `If it deviates from these metrics, the algo is permanently suspended.`;
     }
 
     return text;
@@ -240,7 +280,7 @@ export function StrategyReport({ strategy, config, onReset, modelSource, origina
                   </span>
                 )}
                 <span className="text-[10px] text-white/30 tracking-widest uppercase">
-                  MODEL: {modelSource === 'qwen35' ? 'QWEN 3.5-35B' : 'GEMINI FLASH'} • {new Date().toLocaleTimeString()}
+                  QUANT_ENGINE V3 • ALGO_SYNTHESIS
                 </span>
               </div>
             </div>
@@ -339,9 +379,9 @@ export function StrategyReport({ strategy, config, onReset, modelSource, origina
                 format={v => `${v}%`} color={['#f59e0b', '#fbbf24']} />
               <RiskGauge label="Max Positions" value={riskParams.max_open_positions || 5} maxVal={20}
                 format={v => `${v}`} color={['#3b82f6', '#6366f1']} />
-              <div className="flex flex-col items-center justify-center">
-                <span className="text-2xl font-bold text-indigo-400 font-mono">{riskParams.risk_reward_ratio || '1:3'}</span>
-                <span className="text-[9px] text-white/40 tracking-widest uppercase mt-1">R:R RATIO</span>
+              <div className="flex flex-col items-center justify-center bg-white/[0.01] rounded-xl border border-white/5 shadow-[inset_0_4px_20px_rgba(0,0,0,0.2)]">
+                <span className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-br from-indigo-400 to-violet-600 font-mono drop-shadow-2xl">{riskParams.risk_reward_ratio || '1:3'}</span>
+                <span className="text-[10px] font-bold text-white/50 tracking-[0.2em] uppercase mt-2">R:R RATIO</span>
               </div>
             </div>
           </div>
@@ -432,15 +472,33 @@ export function StrategyReport({ strategy, config, onReset, modelSource, origina
             <button onClick={() => setShowCode(!showCode)}
               className="w-full px-5 py-3 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors">
               <span className="text-[10px] text-white/40 tracking-widest uppercase font-semibold flex items-center gap-2">
-                <Code2 className="w-3.5 h-3.5" /> Generated Python Code
+                <Code2 className="w-3.5 h-3.5" /> 
+                {(() => {
+                  const lang = code.includes('include') ? 'C++' : code.includes('fn ') ? 'Rust' : 'Python';
+                  return `Generated ${lang} Protocol`;
+                })()}
               </span>
               {showCode ? <ChevronUp className="w-4 h-4 text-white/30" /> : <ChevronDown className="w-4 h-4 text-white/30" />}
             </button>
             {showCode && (
               <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }}>
-                <pre className="p-5 text-[11px] text-indigo-300/80 leading-relaxed overflow-x-auto border-t border-white/5 bg-black/40">
-                  <code>{code}</code>
-                </pre>
+                {/* @ts-ignore */}
+                <Highlight code={code} language={code.includes('include') ? 'cpp' : code.includes('fn ') ? 'rust' : 'python'}>
+                  {({ className, style, tokens, getLineProps, getTokenProps }: any) => (
+                    <pre className={`${className} p-6 text-[13px] font-medium leading-relaxed overflow-x-auto border-t border-white/10 shadow-inner custom-scrollbar selection:bg-indigo-500/30`} style={style}>
+                      {tokens.map((line, i) => (
+                        <div key={i} {...getLineProps({ line })} className="table-row">
+                          <span className="table-cell text-right select-none opacity-30 pr-5 tracking-tighter w-8">{i + 1}</span>
+                          <span className="table-cell">
+                            {line.map((token, key) => (
+                              <span key={key} {...getTokenProps({ token })} />
+                            ))}
+                          </span>
+                        </div>
+                      ))}
+                    </pre>
+                  )}
+                </Highlight>
               </motion.div>
             )}
           </div>
@@ -500,48 +558,65 @@ export function StrategyReport({ strategy, config, onReset, modelSource, origina
               </div>
 
               {/* Equity Curve */}
-              <div className="bg-black/30 border border-white/[0.06] rounded-lg p-4">
-                <div className="text-[9px] text-white/30 tracking-widest uppercase mb-3">Equity Curve</div>
-                <div className="h-[250px] flex items-end gap-[2px]">
-                  {backtestResult.equityCurve.map((point, i) => {
-                    const maxEq = Math.max(...backtestResult.equityCurve.map(p => p.equity));
-                    const minEq = Math.min(...backtestResult.equityCurve.map(p => p.equity));
-                    const range = maxEq - minEq || 1;
-                    const height = ((point.equity - minEq) / range) * 230;
-                    const isPositive = point.equity >= (backtestResult.equityCurve[0]?.equity || 100);
-
-                    return (
-                      <motion.div
-                        key={i}
-                        initial={{ height: 0 }}
-                        animate={{ height: `${height}px` }}
-                        transition={{ delay: i * 0.003, duration: 0.3 }}
-                        className={`flex-1 rounded-t-[1px] ${isPositive ? 'bg-emerald-500/40' : 'bg-rose-500/40'}`}
-                        style={{ minWidth: '2px' }}
-                        title={`Day ${point.day}: $${point.equity.toFixed(0)}`}
+              <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-5 shadow-2xl relative overflow-hidden">
+                <div className="text-[10px] text-white/50 tracking-[0.2em] uppercase mb-4 flex items-center justify-between z-10 relative">
+                  <span>Institutional Equity Curve</span>
+                  <span className="text-emerald-400 font-mono tracking-normal">TRUE PNL MODEL</span>
+                </div>
+                <div className="h-[280px] w-full z-10 relative">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={backtestResult.equityCurve} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="eqGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.5} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="benchGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
+                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                      <XAxis dataKey="day" stroke="rgba(255,255,255,0.2)" fontSize={10} tickFormatter={(val) => `D${val}`} minTickGap={30} />
+                      <YAxis stroke="rgba(255,255,255,0.2)" fontSize={10} domain={['dataMin - 1000', 'dataMax + 1000']} tickFormatter={(val) => `$${(val/1000).toFixed(0)}k`} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: '8px', fontSize: '12px', fontFamily: 'monospace', backdropFilter: 'blur(8px)' }}
+                        itemStyle={{ color: '#10b981' }}
+                        labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+                        formatter={(val: number) => [`$${val.toFixed(2)}`, 'Equity']}
+                        labelFormatter={(label) => `Day ${label}`}
                       />
-                    );
-                  })}
+                      <Area type="monotone" dataKey="benchmark" stroke="#6366f1" strokeOpacity={0.4} strokeWidth={1} fillOpacity={1} fill="url(#benchGradient)" />
+                      <Area type="monotone" dataKey="equity" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#eqGradient)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
 
               {/* Monthly Returns Heatmap */}
               {backtestResult.monthlyReturns && backtestResult.monthlyReturns.length > 0 && (
-                <div className="bg-black/30 border border-white/[0.06] rounded-lg p-4">
-                  <div className="text-[9px] text-white/30 tracking-widest uppercase mb-3">Monthly Returns Heatmap</div>
-                  <div className="flex flex-wrap gap-1">
+                <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-5 shadow-2xl relative">
+                  <div className="text-[10px] text-white/50 tracking-[0.2em] uppercase mb-4">Monthly Returns Distribution</div>
+                  <div className="flex flex-wrap gap-2">
                     {backtestResult.monthlyReturns.map((mr, i) => {
                       const val = mr.return;
-                      const intensity = Math.min(Math.abs(val) / 10, 1);
-                      const bg = val > 0
-                        ? `rgba(16,185,129,${0.15 + intensity * 0.5})`
-                        : `rgba(239,68,68,${0.15 + intensity * 0.5})`;
+                      const abs = Math.abs(val);
+                      
+                      // Institutional graded heat index
+                      const heatColor = val > 0 
+                        ? `rgba(16, 185, 129, ${0.1 + (abs / 20)})` 
+                        : `rgba(225, 29, 72, ${0.1 + (abs / 20)})`;
+                      const borderColor = val > 0 
+                        ? `rgba(16, 185, 129, ${0.3 + (abs / 10)})` 
+                        : `rgba(225, 29, 72, ${0.3 + (abs / 10)})`;
+                      const textColor = val > 0 ? '#34d399' : '#fb7185';
+                      
                       return (
-                        <div key={i} className="w-12 h-10 rounded flex flex-col items-center justify-center"
-                          style={{ backgroundColor: bg }}
-                          title={`${mr.month}: ${val > 0 ? '+' : ''}${val.toFixed(1)}%`}>
-                          <span className="text-[7px] text-white/40">{mr.month}</span>
-                          <span className="text-[9px] font-mono text-white/80 font-bold">
+                        <div key={i} className="w-14 h-12 rounded flex flex-col items-center justify-center border transition-all hover:scale-105 cursor-default"
+                          style={{ backgroundColor: heatColor, borderColor: borderColor }}
+                          title={`${mr.month} Execution: ${val > 0 ? '+' : ''}${val.toFixed(2)}%`}>
+                          <span className="text-[8px] text-white/60 tracking-widest">{mr.month}</span>
+                          <span className="text-[10px] font-mono font-bold" style={{ color: textColor }}>
                             {val > 0 ? '+' : ''}{val.toFixed(1)}%
                           </span>
                         </div>
@@ -550,20 +625,122 @@ export function StrategyReport({ strategy, config, onReset, modelSource, origina
                   </div>
                 </div>
               )}
+
+              {/* Retail Translation & Drawdown Profile */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
+                {/* Retail Translation */}
+                <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-5 shadow-2xl relative h-full flex flex-col">
+                  <div className="text-[10px] text-white/50 tracking-[0.2em] uppercase mb-4 flex items-center gap-2">
+                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                    Plain English Retail Translation
+                  </div>
+                  <div className="flex-1 text-[13px] font-sans leading-relaxed text-[#ddd] p-5 bg-[#111] rounded-lg border border-white/5 border-l-4 border-l-amber-500 shadow-inner flex flex-col justify-center">
+                    <p className="italic">"{getRetailSummary(backtestResult)}"</p>
+                  </div>
+                </div>
+                
+                {/* Drawdown Profile */}
+                <div className="bg-[#0a0a0a] border border-white/10 rounded-xl p-5 shadow-2xl relative h-full">
+                  <div className="text-[10px] text-white/50 tracking-[0.2em] uppercase mb-4 flex items-center gap-2">
+                    <TrendingDown className="w-3.5 h-3.5 text-rose-500" />
+                    Historical Drawdown Profile
+                  </div>
+                  <div className="h-[200px] w-full mt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={(() => {
+                        let peak = 0;
+                        return backtestResult.equityCurve.map(p => {
+                          if (p.equity > peak) peak = p.equity;
+                          let dd = peak > 0 ? ((p.equity - peak) / peak) * 100 : 0;
+                          return { day: p.day, drawdown: -Math.abs(dd) };
+                        });
+                      })()} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                        <XAxis dataKey="day" stroke="rgba(255,255,255,0.2)" fontSize={9} tickFormatter={(val) => `D${val}`} minTickGap={30} />
+                        <YAxis stroke="rgba(255,255,255,0.2)" fontSize={9} tickFormatter={(val) => `${val.toFixed(0)}%`} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: 'rgba(0,0,0,0.8)', borderColor: '#e11d48', borderRadius: '8px', fontSize: '11px', fontFamily: 'monospace' }}
+                          itemStyle={{ color: '#fb7185' }}
+                          labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+                          formatter={(val: number) => [`${val.toFixed(2)}%`, 'Max DD']}
+                          labelFormatter={(label) => `Day ${label}`}
+                        />
+                        <Bar dataKey="drawdown" fill="#e11d48" radius={[0, 0, 2, 2]} maxBarSize={15} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
             </motion.div>
           )}
         </div>
 
-        {/* ===== ROW 6: NLP Explainer ===== */}
-        <div className="bg-white/[0.02] border border-white/10 rounded-lg overflow-hidden">
-          <div className="px-5 py-3 bg-gradient-to-r from-indigo-500/10 to-transparent border-b border-white/5 flex items-center gap-3">
-            <Brain className="w-4 h-4 text-indigo-400" />
-            <span className="text-[10px] text-indigo-400 tracking-widest uppercase font-bold">
-              Intelligence Report — Plain English Summary
-            </span>
+        {/* ===== MAX DRAWDOWN STRUCTURAL WARN ===== */}
+        {backtestResult && backtestResult.maxDrawdown > 20 && (
+          <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} 
+            className="mt-6 bg-red-950/40 border border-red-500/30 p-4 rounded-md flex items-start gap-4">
+            <AlertTriangle className="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5 animate-pulse" />
+            <div>
+              <h4 className="text-red-400 text-sm font-bold tracking-widest uppercase mb-1">High Structural Drawdown Warning</h4>
+              <p className="text-red-300/80 text-xs leading-relaxed font-mono">
+                This algorithm exhibits a historical maximum drawdown of <span className="text-red-400 font-bold">{backtestResult.maxDrawdown.toFixed(1)}%</span>. 
+                Deploying this structural logic live is <span className="font-bold underline">EXTREMELY DANGEROUS</span>. 
+                Suggest applying tighter stop-losses or volume-based execution confirmation.
+              </p>
+            </div>
+          </motion.div>
+        )}
+
+        {/* ===== ROW 6: NLP Explainer (Newspaper Format - Dark Mode) ===== */}
+        <div className="w-full bg-[#0a0a0a] text-[#f8f7f3] p-8 md:p-12 border-t-[12px] border-[#1e1e1e] shadow-2xl relative overflow-hidden mt-8 rounded-sm ring-1 ring-white/5">
+          <div className="border-b-4 border-double border-white/20 pb-6 mb-8 text-center">
+            <div className="text-xs font-bold uppercase tracking-[0.3em] text-[#888] mb-3 font-sans">
+              Quantitative Intelligence Division • Market Wrap
+            </div>
+            <h2 className="text-3xl lg:text-5xl font-extrabold font-serif tracking-tight leading-tight mb-2 uppercase text-white shadow-black drop-shadow-md" style={{ fontVariant: 'small-caps' }}>
+              {strat?.name || 'Structural Market Report'}
+            </h2>
+            <div className="flex flex-wrap justify-center items-center gap-4 text-xs font-serif text-[#999] mt-4 uppercase tracking-widest border-t border-b border-white/10 py-2">
+              <span>Vol. XLVII No. {new Date().getDate()}</span>
+              <span className="hidden md:inline">•</span>
+              <span>{formatDt(new Date(), 'EEEE, MMMM do, yyyy')}</span>
+              <span className="hidden md:inline">•</span>
+              <span>Proprietary Desk</span>
+            </div>
           </div>
-          <div className="p-5 text-sm leading-7 text-white/60">
-            {renderBoldText(nlpSummary)}
+          <div className="md:columns-2 lg:columns-3 gap-8 text-[15px] leading-relaxed font-serif text-justify text-[#ccc] selection:bg-[#f8f7f3] selection:text-[#0a0a0a]" style={{ columnRule: '1px solid rgba(255,255,255,0.1)' }}>
+            <div className="float-left text-7xl font-extrabold leading-[0.8] mr-4 mt-2 font-serif text-white">
+              {nlpSummary.charAt(0)}
+            </div>
+            {renderBoldText(nlpSummary.substring(1))}
+            
+            <div className="mt-8 mb-6 p-6 bg-[#111111] text-[#ddd] border-l-4 border-emerald-500 font-sans break-inside-avoid shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 opacity-5 pointer-events-none">
+                <Target className="w-20 h-20" />
+              </div>
+              <h4 className="text-[10px] uppercase tracking-[0.2em] text-emerald-400 mb-4 font-bold border-b border-white/10 pb-2 flex items-center gap-2">
+                <Zap className="w-3 h-3" /> Execution Protocol
+              </h4>
+              <div className="text-sm space-y-3 relative z-10">
+                <div className="flex justify-between items-center pb-1 border-b border-white/5">
+                  <span className="text-white/40 text-xs">Target Market:</span> 
+                  <strong className="font-mono text-white text-xs">{strat?.market_conditions || 'Aggregate'}</strong>
+                </div>
+                <div className="flex justify-between items-center pb-1 border-b border-white/5">
+                  <span className="text-white/40 text-xs">Time Structure:</span> 
+                  <strong className="font-mono text-emerald-400 text-xs">{strat?.timeframe || 'Real-time'}</strong>
+                </div>
+                <div className="flex justify-between items-center pb-1 border-b border-white/5">
+                  <span className="text-white/40 text-xs">Asset Universe:</span> 
+                  <strong className="font-mono text-white text-xs">{strat?.asset_classes?.[0] || 'Equities'}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-8 border-t border-white/10 pt-5 flex justify-between items-center opacity-50 font-serif text-[10px] px-2 text-[#888]">
+            <span>© {new Date().getFullYear()} QUANTSCRIPT Intelligence</span>
+            <span className="tracking-widest uppercase">Uncensored Algorithmic Execution Protocol</span>
           </div>
         </div>
       </div>

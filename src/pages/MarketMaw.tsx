@@ -4,6 +4,8 @@ import { Upload, X, FileText, TrendingUp, TrendingDown, BarChart3 } from "lucide
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuantSuiteStore } from "@/stores/quantsuiteStore";
+import { formatPulseSignalsForAI } from "@/lib/pulseEventEngine";
+
 import AIToolWrapper from "@/components/ai/AIToolWrapper";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -49,7 +51,8 @@ const MarketMaw = () => {
   const [mlResult, setMlResult] = useState<MLPipelineResult | null>(null);
   const [sentimentData, setSentimentData] = useState<SentimentSummary | null>(null);
   const { toast } = useToast();
-  const { sharedAlerts } = useQuantSuiteStore();
+  const { pulseSignals } = useQuantSuiteStore();
+
 
   const commandSuggestions = [
     { icon: <BarChart3 className="w-4 h-4" />, label: "Market Overview", description: "Global market summary", prefix: "/overview" },
@@ -176,14 +179,11 @@ You are MARKET MAW, the High-Frequency Market Intelligence Scanner. You see patt
         setMlResult(pipelineResult);
         apiPrompt += formatMLContextForLLM(pipelineResult);
 
-        // Inject Geopolitical Alert Bus Data
-        if (sharedAlerts && sharedAlerts.length > 0) {
-          apiPrompt += `\n\n[CRITICAL: GLOBAL ALERT BUS]\nThe following geopolitical events are currently unfolding and may spark volatility:\n`;
-          sharedAlerts.forEach(alert => {
-            apiPrompt += `- [${alert.level.toUpperCase()}] ${alert.message} (Source: ${alert.source})\n`;
-          });
-          apiPrompt += `Evaluate if these events present an arbitrage opportunity or high-frequency trade setup.\n`;
+        // Inject Pulse Intelligence (structured signals)
+        if (pulseSignals && pulseSignals.length > 0) {
+          apiPrompt += formatPulseSignalsForAI(pulseSignals, 'market_maw');
         }
+
       } catch (e) {
         console.warn('[MarketMaw] ML pipeline error:', e);
       }

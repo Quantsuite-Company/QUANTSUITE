@@ -4,6 +4,8 @@ import { Upload, X, FileText, TrendingUp, Sparkles, MonitorIcon } from "lucide-r
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuantSuiteStore } from "@/stores/quantsuiteStore";
+import { formatPulseSignalsForAI } from "@/lib/pulseEventEngine";
+
 import ErrorBoundary from "@/components/ErrorBoundary";
 import AIToolWrapper from "@/components/ai/AIToolWrapper";
 import { Button } from "@/components/ui/button";
@@ -43,7 +45,8 @@ const Athena = () => {
   const [portfolioFileName, setPortfolioFileName] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
-  const { sharedAlerts } = useQuantSuiteStore();
+  const { pulseSignals } = useQuantSuiteStore();
+
   const [mlResult, setMlResult] = useState<MLPipelineResult | null>(null);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
   const [liveData, setLiveData] = useState<any>(null);
@@ -165,14 +168,11 @@ You are ATHENA, the Chief Risk Officer. Your ONLY goal is capital preservation a
           setMlResult(pipelineResult);
           apiPrompt += formatMLContextForLLM(pipelineResult);
 
-          // Inject Geopolitical Alert Bus Data
-          if (sharedAlerts && sharedAlerts.length > 0) {
-            apiPrompt += `\n\n[CRITICAL: GLOBAL ALERT BUS]\nThe following geopolitical events are currently unfolding and may impact risk models:\n`;
-            sharedAlerts.forEach(alert => {
-              apiPrompt += `- [${alert.level.toUpperCase()}] ${alert.message} (Source: ${alert.source})\n`;
-            });
-            apiPrompt += `Factor these ongoing events into your downside risk projections immediately.\n`;
+          // Inject Pulse Intelligence (structured signals with portfolio overlap)
+          if (pulseSignals && pulseSignals.length > 0) {
+            apiPrompt += formatPulseSignalsForAI(pulseSignals, 'athena');
           }
+
 
           // Run backtest if strategy-related query
           if (/strateg|backtest|test|sandbox|optim/i.test(input)) {
