@@ -19,43 +19,57 @@ graph TD
     ACTION -.->|Live Feedback| WORLD
 ```
 
-## 🛠️ THE ARSENAL: CORE FEATURES
+## 🛠️ THE ARSENAL: SYSTEM MODULES
 
-### 🔴 THE PULSE (World-to-Market Translation)
-- **Geopolitical Heatmap**: Real-time global risk visualization tracking conflict zones, trade routes, and natural disasters.
-- **Institutional Event Feed**: Deterministic engine mapping world events directly to asset class volatility (Semiconductors, Defense, Tech, Energy).
-- **Dynamic Risk Adjustment**: Automated risk-weighting based on regional instability and central bank shifts.
+### 🕹️ CORE COMMAND
+- **Command Center**: The primary cockpit for global market oversight and system status.
+- **Pulse**: Real-time world-to-market translation engine. Tracks geopolitical risk, trade routes, and conflict zones with live impact mapping.
 
-### 📊 MARKET MAW (Sentiment & Liquid Flow Analysis)
-- **FinBERT Intelligence**: Real-time sentiment extraction from global news terminals.
-- **Institutional Flow Tracking**: Visualizing "smart money" movement before it hits the retail tape.
-- **Volatility Surface Models**: Deep-dive analysis of market fear and greed across timeframes.
+### 🧠 INTELLIGENCE SUITE (AI TOOLS)
+- **Athena AI**: The Chief Risk Officer. Institutional VaR, factor decomposition, and tail-risk stress testing.
+- **Market Maw**: Sentiment and liquid flow analysis. Feels the institutional heat before it hits the tape.
+- **AI Strategy Advisor**: Natural language to quantitative strategy engine. Pure, backtestable alpha.
+- **Quant Engine**: The mathematical brain for complex derivative modeling and Greek sensitivity.
+- **Advisor**: Institutional knowledge base and strategic guidance terminal.
 
-### 🧠 QUANT ENGINE (Advanced Analytics)
-- **Black-Scholes OS**: Institutional-grade options pricing with real-time Greek sensitivity.
-- **Monte Carlo Simulations**: 10,000+ path simulations for probability of profit (PoP) modeling.
-- **Binomial Tree Visualizer**: Step-by-step American option exercise modeling.
-- **SVI Model Integration**: Stochastic Volatility Inspired models for fitting the volatility smile.
+### 💹 MARKET & TRADING
+- **Stock Report**: Deep-dive institutional equity analysis and scoring.
+- **Market Terminal**: Professional-grade execution environment and live data stream.
+- **Stock Screener**: High-performance filtering engine for identifying institutional setups.
 
-### 🛡️ ATHENA (Portfolio Risk Management)
-- **Institutional VaR/CVaR**: Parametric and historical Value at Risk analysis for large AUM.
-- **Factor Decomposition**: Beta, momentum, value, and volatility exposure breakdowns.
-- **Regime Detection**: Automated classification of market environments (Bull/Bear/Sideways).
-- **Stress-Testing**: One-click "Black Swan" simulation across the entire portfolio.
+### 🛡️ PORTFOLIO MANAGEMENT
+- **My Portfolios**: Unified view of institutional allocations and multi-asset exposure.
+- **Portfolio Builder**: Dynamic construction engine for optimized asset weighting.
+- **Portfolio Optimizer**: Mean-variance and risk-parity optimization modules.
+- **Alpha Signals**: Proprietary signal generation across global equity and derivative markets.
+- **Walk-Forward Test**: Robust validation of strategies across out-of-sample data regimes.
+- **Backtest History**: Comprehensive audit log of strategy performance and decay.
+- **Risk Analysis**: Multi-dimensional risk reporting and concentration detection.
+- **CSV Visualizer**: Instant institutional visualization for external raw data feeds.
 
-### 🔥 STRATEGY ADVISOR (The Alpha Factory)
-- **Natural Language to Code**: Convert complex trading ideas into backtestable Python (pandas/numpy) scripts.
-- **Kelly Criterion Sizing**: Mathematically optimized position sizing for long-term survival.
-- **Hedge Generator**: Automated generation of optimal tail-risk hedging strategies (Stops, Spreads, Strangles).
+### 📐 PRICING MODELS (DERIVATIVES OS)
+- **Institutional Calculator**: Precise Black-Scholes and Binomial implementation.
+- **Advanced Greeks**: Second and third-order sensitivity analysis (Vanna, Charm, Vomma).
+- **Binomial Tree**: Discrete-time modeling for American and exotic options.
+- **Monte Carlo**: 10,000+ path simulations for complex probability distributions.
+- **SVI Model**: Stochastic Volatility Inspired models for perfect smile fitting.
+- **Heston Model**: Stochastic volatility modeling for institutional displacement.
+- **Jump Diffusion**: Modeling market shocks and discontinuous price action.
 
-### 🔍 ARBITRAGE DETECTOR
-- **Cross-Market Scanners**: Real-time detection of Put-Call Parity violations and synthetic mispricing.
-- **Execution Risk Modeling**: Accounting for slippage, commissions, and latency before the trade is suggested.
+### 🔍 ANALYSIS TOOLS
+- **Technical Indicators**: High-performance library of institutional momentum and flow indicators.
+- **Volatility Solver**: Automated surface construction and regime detection.
+- **Credit Risk Models**: Modeling counterparty and default risk across credit cycles.
+- **Arbitrage Detector**: Real-time scanner for Put-Call Parity and cross-exchange inefficiencies.
+- **Scenario Analysis**: "What-if" modeling for major market dislocations and economic shifts.
+- **Earnings Calendar**: Institutional event tracking with predicted volatility impact.
 
-### 📜 QUANTSCRIPT (The Control Layer)
-- **DSL for Quants**: A domain-specific logic layer that allows for rapid automation of multi-step intelligence flows.
+### 🚀 STRATEGY & INSIGHT
+- **Strategy Builder**: The low-code factory for institutional logic deployment.
+- **Educational Insight**: Deep-dive theory and implementation guides for professional quants.
+- **Insider Street**: Tracking institutional flows, dark pool prints, and regulatory filings.
 
-## 🚀 DEPLOYMENT
+## 🏁 DEPLOYMENT
 
 ### STANDALONE SETUP
 1. **Clone the machine**:
@@ -79,4 +93,3 @@ The machine requires the following high-security keys in your `.env` or Supabase
 ---
 **QuantSuite © 2026. FOR THE 1% WHO DECIDE THE FUTURE.**
 *"Most traders are deaf. QuantSuite makes you hear everything."*
-
