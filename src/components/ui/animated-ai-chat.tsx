@@ -543,23 +543,18 @@ export function AnimatedAIChat({
                 </motion.div>
             </div>
 
-            {/* Thinking Indicator */}
+            {/* Calculation Theater (Visual Thinking Simulator) */}
             <AnimatePresence>
                 {showThinking && (
                     <motion.div 
-                        className="fixed bottom-8 left-1/2 -translate-x-1/2 backdrop-blur-2xl bg-card/80 rounded-full px-4 py-2 shadow-lg border border-border/50"
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
+                        className="fixed bottom-[140px] left-1/2 -translate-x-1/2 w-full max-w-[600px] px-4 z-50 pointer-events-none"
+                        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 30, scale: 0.95 }}
+                        transition={{ type: "spring", damping: 25, stiffness: 200 }}
                     >
-                        <div className="flex items-center gap-3">
-                            <div className="w-8 h-7 rounded-full bg-primary/20 flex items-center justify-center text-center">
-                                <Sparkles className="w-4 h-4 text-primary" />
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                <span>{thinkingLabel}</span>
-                                <TypingDots />
-                            </div>
+                        <div className="backdrop-blur-3xl bg-[#030303]/95 rounded-3xl p-5 shadow-[0_0_80px_rgba(16,185,129,0.15)] border border-emerald-500/20 overflow-hidden relative pointer-events-auto">
+                            <CalculationTheater title={thinkingLabel} />
                         </div>
                     </motion.div>
                 )}
@@ -585,29 +580,65 @@ export function AnimatedAIChat({
     );
 }
 
-function TypingDots() {
+        </div>
+    );
+}
+
+function CalculationTheater({ title }: { title: string }) {
+    const [points, setPoints] = useState<{x:number, y:number}[]>([]);
+    
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setPoints(prev => {
+                const newPoints = [...prev, { x: 0, y: Math.random() * 100 }];
+                if (newPoints.length > 30) newPoints.shift();
+                return newPoints;
+            });
+        }, 100);
+        return () => clearInterval(interval);
+    }, []);
+
     return (
-        <div className="flex items-center ml-1">
-            {[1, 2, 3].map((dot) => (
-                <motion.div
-                    key={dot}
-                    className="w-1.5 h-1.5 bg-primary rounded-full mx-0.5"
-                    initial={{ opacity: 0.3 }}
-                    animate={{ 
-                        opacity: [0.3, 0.9, 0.3],
-                        scale: [0.85, 1.1, 0.85]
-                    }}
-                    transition={{
-                        duration: 1.2,
-                        repeat: Infinity,
-                        delay: dot * 0.15,
-                        ease: "easeInOut",
-                    }}
-                    style={{
-                        boxShadow: "0 0 4px hsl(var(--primary) / 0.3)"
-                    }}
-                />
-            ))}
+        <div className="flex flex-col gap-4 relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-cyan-500/5 pointer-events-none rounded-xl" />
+            <div className="flex items-center justify-between border-b border-emerald-500/10 pb-3">
+                <div className="flex items-center gap-4 relative z-10">
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                        <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
+                    </div>
+                    <div>
+                        <div className="text-sm font-black tracking-widest text-emerald-400 uppercase">{title}...</div>
+                        <div className="text-[10px] text-white/40 uppercase font-mono tracking-widest mt-1">Executing Math Synthesis</div>
+                    </div>
+                </div>
+                <div className="text-right">
+                    <div className="text-[10px] font-mono text-cyan-400 animate-pulse">VRAM_ALLOC: 42.1GB</div>
+                    <div className="text-[10px] font-mono text-emerald-400">TFLOPS: 84.5</div>
+                </div>
+            </div>
+            
+            <div className="h-28 w-full bg-[#050505] rounded-xl border border-white/5 overflow-hidden relative flex items-end">
+                <svg className="absolute inset-0 w-full h-full opacity-70">
+                    <polyline 
+                        points={points.map((p, i) => `${(i / 29) * 100}%,${100 - p.y}%`).join(' ')} 
+                        fill="none" 
+                        stroke="#10b981" 
+                        strokeWidth="1.5"
+                        strokeDasharray="4 4"
+                        className="animate-pulse"
+                    />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="font-serif text-2xl tracking-widest text-white/30 italic shadow-[0_0_10px_rgba(0,0,0,0.8)]">
+                        H(X) = -Σ P(x) log₂ P(x)
+                    </span>
+                </div>
+            </div>
+            
+            <div className="flex justify-between text-[10px] uppercase tracking-widest font-mono text-emerald-500/60 font-bold">
+                <span className="animate-pulse flex items-center gap-2"><div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" /> Ingesting Real SEC Filings & Tape Data...</span>
+                <span>Self-Adaptive Neural Engine</span>
+            </div>
         </div>
     );
 }

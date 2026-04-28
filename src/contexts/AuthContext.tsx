@@ -32,7 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Handle auth events
         if (event === 'SIGNED_IN') {
           setTimeout(() => {
-            navigate('/command-center');
+            const isOnboarded = session?.user?.user_metadata?.onboarding_completed;
+            navigate(isOnboarded ? '/command-center' : '/onboarding');
           }, 0);
         }
       }

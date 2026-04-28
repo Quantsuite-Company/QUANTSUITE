@@ -142,6 +142,8 @@ export default function AgentOrchestrator() {
   const [chartMode, setChartMode] = useState<'tradingview' | 'ai_overlay'>('tradingview');
   const [historicalPrices, setHistoricalPrices] = useState<any[]>([]);
   const [loadingPrices, setLoadingPrices] = useState(false);
+  const [simQty, setSimQty] = useState<number>(1000);
+
 
   // ── Uptime ────────────────────────────────────────────────
   useEffect(() => { const iv = setInterval(()=>setUptime(p=>p+1),1000); return ()=>clearInterval(iv); }, []);
@@ -1213,39 +1215,111 @@ export default function AgentOrchestrator() {
                         <span className="text-[10px] tracking-widest uppercase">Aligning data frames...</span>
                       </div>
                     ) : historicalPrices.length > 0 ? (
-                      <div className="flex-1 w-full h-full relative">
-                        <ResponsiveContainer width="100%" height="90%">
-                          <AreaChart data={historicalPrices} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
-                            <defs>
-                              <linearGradient id="overlayG" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor={detailThesis?.direction === 'SHORT' ? C.risk : C.profit} stopOpacity={0.2}/>
-                                <stop offset="95%" stopColor="#000" stopOpacity={0}/>
-                              </linearGradient>
-                            </defs>
-                            <CartesianGrid stroke={C.border} strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="day" stroke={C.textD} tick={{ fill: C.textM, fontSize: 8 }} />
-                            <YAxis domain={['auto', 'auto']} stroke={C.textD} tick={{ fill: C.textM, fontSize: 8 }} />
-                            <Tooltip 
-                              contentStyle={{ backgroundColor: C.panelBg, borderColor: C.border, color: C.textH, fontSize: '10px' }} 
-                              labelFormatter={(label) => `Relative Day: ${label}`}
-                            />
-                            <Area type="monotone" dataKey="price" stroke={detailThesis?.direction === 'SHORT' ? C.risk : C.profit} strokeWidth={2} fillOpacity={1} fill="url(#overlayG)" />
+                      <div className="flex-1 w-full h-full flex gap-4 p-4 relative overflow-hidden">
+                        {/* LEFT COLUMN: The Visual Chart Overlay */}
+                        <div className="flex-[7] min-w-0 h-full flex flex-col justify-between">
+                          <ResponsiveContainer width="100%" height="90%">
+                            <AreaChart data={historicalPrices} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+                              <defs>
+                                <linearGradient id="overlayG" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor={detailThesis?.direction === 'SHORT' ? C.risk : C.profit} stopOpacity={0.25}/>
+                                  <stop offset="95%" stopColor="#000" stopOpacity={0}/>
+                                </linearGradient>
+                              </defs>
+                              <CartesianGrid stroke={C.border} strokeDasharray="3 3" vertical={false} />
+                              <XAxis dataKey="day" stroke={C.textD} tick={{ fill: C.textM, fontSize: 8 }} />
+                              <YAxis domain={['auto', 'auto']} stroke={C.textD} tick={{ fill: C.textM, fontSize: 8 }} />
+                              <Tooltip 
+                                contentStyle={{ backgroundColor: C.panelBg, borderColor: C.border, color: C.textH, fontSize: '10px' }} 
+                                labelFormatter={(label) => `Relative Day: ${label}`}
+                              />
+                              <Area type="monotone" dataKey="price" stroke={detailThesis?.direction === 'SHORT' ? C.risk : C.profit} strokeWidth={2} fillOpacity={1} fill="url(#overlayG)" />
+                              
+                              {detailThesis && (
+                                <>
+                                  <ReferenceLine y={detailThesis.entryPrice} stroke={C.blue} strokeDasharray="5 5" label={{ value: `ENTRY: $${detailThesis.entryPrice.toFixed(2)}`, fill: C.blue, fontSize: 10, position: 'insideTopLeft' }} />
+                                  <ReferenceLine y={detailThesis.targetPrice} stroke={C.profit} strokeDasharray="3 3" label={{ value: `TARGET: $${detailThesis.targetPrice.toFixed(2)}`, fill: C.profit, fontSize: 10, position: 'insideBottomLeft' }} />
+                                  <ReferenceLine y={detailThesis.stopLoss} stroke={C.risk} strokeDasharray="3 3" label={{ value: `STOP: $${detailThesis.stopLoss.toFixed(2)}`, fill: C.risk, fontSize: 10, position: 'insideTopLeft' }} />
+                                </>
+                              )}
+                            </AreaChart>
+                          </ResponsiveContainer>
+                          <div className="text-[10px] uppercase tracking-widest flex justify-center gap-6 mt-1" style={{color:C.textM}}>
+                            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{backgroundColor:C.blue}}></span> AI Entry</span>
+                            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{backgroundColor:C.profit}}></span> Take Profit</span>
+                            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full" style={{backgroundColor:C.risk}}></span> Stop Loss</span>
+                          </div>
+                        </div>
+
+                        {/* RIGHT COLUMN: Interactive Ticket Builder / Simulator */}
+                        <div className="flex-[3] min-w-[260px] border-l pl-4 flex flex-col gap-3 justify-between" style={{borderColor:C.border}}>
+                          <div>
+                            <span className="text-[9px] uppercase tracking-[0.2em] font-black flex items-center gap-1.5 mb-3" style={{color:C.purple}}>
+                              <Settings className="w-3.5 h-3.5" /> Live Trade Simulator
+                            </span>
                             
-                            {detailThesis && (
-                              <>
-                                <ReferenceLine y={detailThesis.entryPrice} stroke={C.blue} strokeDasharray="5 5" label={{ value: `ENTRY: $${detailThesis.entryPrice.toFixed(2)}`, fill: C.blue, fontSize: 10, position: 'insideTopLeft' }} />
-                                <ReferenceLine y={detailThesis.targetPrice} stroke={C.profit} strokeDasharray="3 3" label={{ value: `TARGET: $${detailThesis.targetPrice.toFixed(2)}`, fill: C.profit, fontSize: 10, position: 'insideBottomLeft' }} />
-                                <ReferenceLine y={detailThesis.stopLoss} stroke={C.risk} strokeDasharray="3 3" label={{ value: `STOP: $${detailThesis.stopLoss.toFixed(2)}`, fill: C.risk, fontSize: 10, position: 'insideTopLeft' }} />
-                              </>
-                            )}
-                          </AreaChart>
-                        </ResponsiveContainer>
-                        <div className="text-[10px] text-center uppercase tracking-widest mt-2 flex justify-center gap-6" style={{color:C.textM}}>
-                          <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{backgroundColor:C.blue}}></span> AI Entry</span>
-                          <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{backgroundColor:C.profit}}></span> Take Profit</span>
-                          <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full" style={{backgroundColor:C.risk}}></span> Stop Loss</span>
+                            {/* Quantity Selector Slider */}
+                            <div className="p-3 rounded-xl border bg-black/40 mb-3" style={{borderColor:C.border}}>
+                              <div className="flex justify-between items-center mb-1.5">
+                                <span className="text-[8px] uppercase tracking-wider text-white/50 font-bold">Allocation Qty</span>
+                                <span className="text-xs font-mono font-black" style={{color:C.textH}}>{simQty.toLocaleString()} shares</span>
+                              </div>
+                              <input 
+                                type="range" min={10} max={10000} step={10} value={simQty}
+                                onChange={(e) => setSimQty(Number(e.target.value))}
+                                className="w-full accent-indigo-500 h-1 bg-white/10 rounded-lg appearance-none cursor-pointer"
+                              />
+                            </div>
+
+                            {/* Ticket Details */}
+                            <div className="space-y-2">
+                              {detailThesis && (
+                                <>
+                                  <div className="flex justify-between items-center text-[9px] font-mono py-1 border-b border-dashed border-white/5">
+                                    <span style={{color:C.textM}}>Margin Requirement (5x)</span>
+                                    <span style={{color:C.textH}} className="font-bold">${((simQty * detailThesis.entryPrice) / 5).toLocaleString(undefined, {maximumFractionDigits:2})}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[9px] font-mono py-1 border-b border-dashed border-white/5">
+                                    <span style={{color:C.textM}}>Total Notional Value</span>
+                                    <span style={{color:C.textH}} className="font-bold">${(simQty * detailThesis.entryPrice).toLocaleString(undefined, {maximumFractionDigits:2})}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[9px] font-mono py-1 border-b border-dashed border-white/5">
+                                    <span style={{color:C.textM}}>Risk/Reward Multiple</span>
+                                    {(() => {
+                                      const rr = Math.abs((detailThesis.targetPrice - detailThesis.entryPrice) / (detailThesis.entryPrice - detailThesis.stopLoss));
+                                      return <span style={{color: rr >= 2 ? C.profit : C.warn}} className="font-bold">{rr.toFixed(2)}x</span>;
+                                    })()}
+                                  </div>
+                                  <div className="flex justify-between items-center text-[9px] font-mono py-1 border-b border-dashed border-white/5">
+                                    <span style={{color:C.textM}}>Max Expected Loss (Stop)</span>
+                                    <span style={{color:C.risk}} className="font-bold">-${Math.abs(simQty * (detailThesis.entryPrice - detailThesis.stopLoss)).toLocaleString(undefined, {maximumFractionDigits:2})}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center text-[9px] font-mono py-1 border-b border-dashed border-white/5">
+                                    <span style={{color:C.textM}}>Expected Profit (Target)</span>
+                                    <span style={{color:C.profit}} className="font-bold">+${Math.abs(simQty * (detailThesis.targetPrice - detailThesis.entryPrice)).toLocaleString(undefined, {maximumFractionDigits:2})}</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Order Confirmation Block */}
+                          <button
+                            disabled={!detailThesis}
+                            onClick={() => alert(`Simulated Order of ${simQty} shares filled via execution layer logic.`)}
+                            className="w-full py-3 rounded-xl font-bold tracking-[0.2em] text-[10px] uppercase transition-all shadow-lg hover:shadow-indigo-500/20 disabled:opacity-40 disabled:hover:shadow-none"
+                            style={{
+                              background: detailThesis?.direction === 'SHORT' 
+                                ? `linear-gradient(135deg, ${C.risk} 0%, rgba(255,59,92,0.6) 100%)`
+                                : `linear-gradient(135deg, ${C.profit} 0%, rgba(0,214,143,0.6) 100%)`,
+                              color: '#FFF',
+                            }}
+                          >
+                            Place Simulated {detailThesis?.direction || 'ORDER'}
+                          </button>
                         </div>
                       </div>
+
                     ) : (
                       <div className="flex-1 flex flex-col items-center justify-center text-white/20 uppercase tracking-widest">
                         <AlertTriangle className="w-8 h-8 mb-2 opacity-30" />

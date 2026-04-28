@@ -1,0 +1,8 @@
+﻿66b0792 HEAD@{0}: checkout: moving from main to deploy/quantsuite-institutional
+66b0792 HEAD@{1}: commit (merge): chore: resolve merge conflict in README.md favoring institutional version
+7146122 HEAD@{2}: commit: feat: Finalize QuantSuite Institutional OS transition. Pulse overhaul and Branding scrub complete.
+b1439bb HEAD@{3}: commit: feat: QuantScript NL-to-Strategy platform redesign - Qwen3.5-35B + RAG + multi-panel dashboard
+78d3bca HEAD@{4}: Branch: renamed refs/heads/latest_branch to refs/heads/main
+78d3bca HEAD@{6}: commit (initial): QuantSuite v1.0: Institutional Command HUD & Strategy Engine
+d22a1f6 HEAD@{7}: commit: Institutional UI Overhaul & Institutional Grade QuantSuite Foundation
+815993a HEAD@{8}: clone: from https://github.com/biriyani4ever/black-scholes-insight.git

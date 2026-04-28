@@ -1,7 +1,7 @@
 import { Calculator, Layer, Cpu, MagicStar, Activity, DocumentText, Book, TaskSquare, TrendUp, ChartSquare, Speedometer, Warning2, Chart1, Diagram, Home2, SearchNormal1 } from "iconsax-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import quantsuiteLogo from "@/assets/quantsuite-logo.png";
-import { LogOut, User } from "lucide-react";
+import { LogOut, User, BrainCircuit, Briefcase } from "lucide-react";
 import { useEffect } from "react";
 import {
   Sidebar,
@@ -32,13 +32,10 @@ const topLevelItems = [
 
 const sidebarSections = [
   {
-    label: "AI Tools",
+    label: "AI-Native Hedge Fund",
     items: [
-      { title: "Athena AI", url: "/athena", icon: MagicStar },
-      { title: "Market Maw", url: "/market-maw", icon: Activity },
-      { title: "AI Strategy Advisor", url: "/ai-strategy-advisor", icon: TrendUp },
-      { title: "Quant Engine", url: "/quant-engine", icon: Cpu },
-      { title: "Advisor", url: "/advisor", icon: Book },
+      { title: "Agent Orchestrator", url: "/agent-orchestrator", icon: BrainCircuit },
+      { title: "Portfolio Terminal", url: "/portfolio-terminal", icon: Briefcase },
     ],
   },
   {

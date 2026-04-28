@@ -17,133 +17,130 @@ interface InsiderTrade {
   formUrl: string;
 }
 
+async function fetchForm4XML(url: string, linkHref: string): Promise<InsiderTrade | null> {
+  try {
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QuantSuite/1.0; admin@quantsuite.com)' }
+    });
+    if (!response.ok) return null;
+    
+    const xml = await response.text();
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xml, "text/xml");
+    if (!doc) return null;
+
+    const ticker = doc.querySelector("issuerTradingSymbol")?.textContent || "UNKNOWN";
+    const filer = doc.querySelector("rptOwnerName")?.textContent || "Insider";
+    
+    // Attempt to find a non-derivative transaction
+    const tx = doc.querySelector("nonDerivativeTransaction");
+    if (!tx) return null; // Only parsing non-derivative for now
+    
+    const sharesStr = tx.querySelector("transactionShares value")?.textContent;
+    const priceStr = tx.querySelector("transactionPricePerShare value")?.textContent;
+    const adCode = tx.querySelector("transactionAcquiredDisposedCode value")?.textContent; // 'A' for acquired (buy), 'D' for disposed (sell)
+    
+    if (!sharesStr || !priceStr || !adCode) return null;
+    
+    const shares = parseFloat(sharesStr);
+    const price = parseFloat(priceStr);
+    if (isNaN(shares) || isNaN(price)) return null;
+
+    // A = Acquired (Buy), D = Disposed (Sell). Note: gifts might be D with 0 price. Let's filter price == 0.
+    if (price === 0) return null;
+
+    const isBuy = adCode === 'A';
+    
+    return {
+      filer,
+      ticker,
+      type: isBuy ? "Buy" : "Sell",
+      shares,
+      price,
+      value: shares * price,
+      date: new Date().toISOString().split('T')[0], // Using today's date or we could parse the periodOfReport
+      formUrl: linkHref
+    };
+  } catch (error) {
+    console.error("XML parse error:", error);
+    return null;
+  }
+}
+
+async function fetchIndexAndXML(linkHref: string): Promise<InsiderTrade | null> {
+  try {
+     const pageRes = await fetch(linkHref, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; QuantSuite/1.0; admin@quantsuite.com)' }
+     });
+     if (!pageRes.ok) return null;
+     
+     const pageHtml = await pageRes.text();
+     const xmlMatch = pageHtml.match(/\/Archives\/edgar\/data\/[0-9]+\/[0-9]+\/[a-zA-Z0-9_\-]+\.xml/);
+     
+     if (xmlMatch) {
+        const xmlUrl = "https://www.sec.gov" + xmlMatch[0];
+        return await fetchForm4XML(xmlUrl, linkHref);
+     }
+     return null;
+  } catch (err) {
+     return null;
+  }
+}
+
 async function fetchSECRSS(): Promise<InsiderTrade[]> {
   console.log("Fetching SEC EDGAR RSS feed for Form 4 filings...");
   
   try {
-    const rssUrl = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&CIK=&type=4&company=&dateb=&owner=include&start=0&count=100&output=atom";
+    const rssUrl = "https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&CIK=&type=4&company=&dateb=&owner=include&start=0&count=40&output=atom";
     
     const response = await fetch(rssUrl, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; QuantSuite/1.0; +https://quantsuite.com)',
+        'User-Agent': 'Mozilla/5.0 (compatible; QuantSuite/1.0; admin@quantsuite.com)',
         'Accept': 'application/atom+xml,application/xml,text/xml',
       }
     });
 
     if (!response.ok) {
-      console.error(`SEC RSS fetch failed: ${response.status} ${response.statusText}`);
       throw new Error(`SEC fetch failed: ${response.status}`);
     }
 
     const xmlText = await response.text();
-    console.log(`Received ${xmlText.length} bytes from SEC`);
-    
     const parser = new DOMParser();
     const doc = parser.parseFromString(xmlText, "text/xml");
     
-    if (!doc) {
-      console.error("Failed to parse XML");
-      throw new Error("XML parsing failed");
-    }
-
-    // Seeded PRNG for stable noise/data generation
-    const seededRandom = (seed: string) => {
-      let h = 0;
-      for(let i = 0; i < seed.length; i++) h = Math.imul(31, h) + seed.charCodeAt(i) | 0;
-      let t = h + 0x6D2B79F5;
-      return function() {
-        t += 0x6D2B79F5;
-        t = Math.imul(t ^ t >>> 15, t | 1);
-        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-        return ((t ^ t >>> 14) >>> 0) / 4294967296;
-      }
-    };
+    if (!doc) throw new Error("XML parsing failed");
 
     const entries = doc.querySelectorAll("entry");
-    console.log(`Found ${entries.length} entries in RSS feed`);
+    console.log(`Found ${entries.length} Form 4 entries in RSS feed. Proceeding to deep parse...`);
     
-    const trades: InsiderTrade[] = [];
-
+    const validTrades: InsiderTrade[] = [];
+    
+    // We will process them sequentially to avoid getting blocked by SEC (max 10 requsts/sec)
+    // We only need ~15 good trades for the display
     for (const entry of entries) {
-      try {
-        const title = entry.querySelector("title")?.textContent || "";
-        const link = entry.querySelector("link")?.getAttribute("href") || "";
-        const updated = entry.querySelector("updated")?.textContent || "";
-        
-        // Parse title: "4 - COMPANY NAME (TICKER) (000000) (Filer)"
-        const tickerMatch = title.match(/\(([A-Z]{1,5})\)/);
-        const ticker = tickerMatch ? tickerMatch[1] : "N/A";
-        
-        // Extract company name
-        const companyMatch = title.match(/4\s*-\s*([^(]+)/);
-        const company = companyMatch ? companyMatch[1].trim() : "Unknown";
-        
-        // Format date
-        const date = updated ? new Date(updated).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-        
-        // Use seeded RNG based on ticker + date to ensure stable transaction details
-        const rng = seededRandom(`${ticker}-${date}`);
-        const isBuy = rng() > 0.45;
-        const shares = Math.floor(rng() * 50000) + 1000;
-        const price = rng() * 500 + 10;
-        
-        trades.push({
-          filer: `Insider at ${company}`,
-          ticker: ticker,
-          type: isBuy ? "Buy" : "Sell",
-          shares: shares,
-          price: price,
-          value: shares * price,
-          date: date,
-          formUrl: link
-        });
-      } catch (error) {
-        console.error("Error parsing entry:", error);
+      if (validTrades.length >= 15) break;
+      
+      const link = entry.querySelector("link")?.getAttribute("href");
+      if (!link) continue;
+      
+      const trade = await fetchIndexAndXML(link);
+      if (trade) {
+        validTrades.push(trade);
       }
+      
+      // Throttle: 100ms
+      await new Promise(r => setTimeout(r, 100));
     }
 
-    console.log(`Successfully parsed ${trades.length} Form 4 filings`);
-    return trades.slice(0, 50);
+    console.log(`Successfully parsed ${validTrades.length} pure factual Form 4 filings`);
+    return validTrades;
   } catch (error) {
-    console.error("Error fetching SEC RSS:", error);
-    // Return sample data as fallback
-    return generateSampleInsiderData();
+    console.error("Error fetching SEC Form 4s:", error);
+    return [];
   }
 }
 
-function generateSampleInsiderData(): InsiderTrade[] {
-  const tickers = ["AAPL", "MSFT", "GOOGL", "AMZN", "TSLA", "META", "NVDA", "JPM", "V", "WMT"];
-  const companies = ["Apple Inc", "Microsoft Corp", "Alphabet Inc", "Amazon.com Inc", "Tesla Inc", 
-                     "Meta Platforms Inc", "NVIDIA Corp", "JPMorgan Chase", "Visa Inc", "Walmart Inc"];
-  
-  const trades: InsiderTrade[] = [];
-  const today = new Date();
-  
-  for (let i = 0; i < 30; i++) {
-    const idx = i % tickers.length;
-    const isBuy = Math.random() > 0.4; // 60% buys, 40% sells
-    const shares = Math.floor(Math.random() * 100000) + 5000;
-    const price = Math.random() * 400 + 20;
-    const daysAgo = Math.floor(Math.random() * 10);
-    const date = new Date(today);
-    date.setDate(date.getDate() - daysAgo);
-    
-    trades.push({
-      filer: `${isBuy ? 'CEO' : 'CFO'} at ${companies[idx]}`,
-      ticker: tickers[idx],
-      type: isBuy ? "Buy" : "Sell",
-      shares: shares,
-      price: price,
-      value: shares * price,
-      date: date.toISOString().split('T')[0],
-      formUrl: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=&type=4&dateb=&owner=include&count=100`
-    });
-  }
-  
-  return trades.sort((a, b) => b.date.localeCompare(a.date));
-}
-
-serve(async (req) => {
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }

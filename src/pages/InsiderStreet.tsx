@@ -97,13 +97,13 @@ export default function InsiderStreet() {
   const filteredInsider = useMemo(() => {
     return insiderTrades.filter((t) => {
       const matchesQuery = t.ticker.toLowerCase().includes(query.toLowerCase()) ||
-                          t.filer.toLowerCase().includes(query.toLowerCase());
+        t.filer.toLowerCase().includes(query.toLowerCase());
       const matchesType = filters.type === "all" || t.type === filters.type;
       const matchesMinValue = !filters.minValue || t.value >= Number(filters.minValue);
       const matchesMaxValue = !filters.maxValue || t.value <= Number(filters.maxValue);
       const matchesDateFrom = !filters.dateFrom || new Date(t.date) >= new Date(filters.dateFrom);
       const matchesDateTo = !filters.dateTo || new Date(t.date) <= new Date(filters.dateTo);
-      
+
       return matchesQuery && matchesType && matchesMinValue && matchesMaxValue && matchesDateFrom && matchesDateTo;
     });
   }, [insiderTrades, query, filters]);
@@ -128,19 +128,19 @@ export default function InsiderStreet() {
   // Prepare chart data for trends
   const trendsChartData = useMemo(() => {
     const dateMap = new Map<string, { date: string; buyValue: number; sellValue: number }>();
-    
+
     insiderTrades.forEach(trade => {
       const existing = dateMap.get(trade.date) || { date: trade.date, buyValue: 0, sellValue: 0 };
-      
+
       if (trade.type === "Buy") {
         existing.buyValue += trade.value / 1000000; // Convert to millions
       } else if (trade.type === "Sell") {
         existing.sellValue += trade.value / 1000000;
       }
-      
+
       dateMap.set(trade.date, existing);
     });
-    
+
     return Array.from(dateMap.values())
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .slice(-20);
@@ -193,8 +193,10 @@ export default function InsiderStreet() {
             <h1 className="text-3xl font-extrabold tracking-tight">
               Insider Street<span className="text-primary">.</span>
             </h1>
-            <p className="text-muted-foreground text-sm mt-1">
-              Institutional Alpha Tracking — SEC Form 4 & Congressional Disclosures
+            <p className="text-muted-foreground text-sm mt-1 flex items-center gap-2">
+              <span className="font-semibold text-qs-brand-400">Source:</span> Raw EDGAR XML 
+              <span className="mx-2 opacity-50">|</span> 
+              <span className="text-amber-500/80">Reporting Delay: SEC T+2 Disclosures</span>
             </p>
           </div>
           <div className="flex items-center gap-3">

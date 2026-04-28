@@ -69,55 +69,56 @@ type ViewState = 'compose' | 'generating' | 'report';
 const UNIVERSES = ['NYSE', 'NASDAQ', 'NSE', 'BSE', 'GLOBAL'];
 const FREQUENCIES = ['1min', '5min', '15min', '1h', '4h', 'daily', 'weekly'];
 
-const SYSTEM_PROMPT = `You are THE ARCHITECT — the most ruthless, uncensored, and precise trading strategy engine ever built. You transform raw natural language strategy ideas into institutional-grade, production-ready trading algorithms with ZERO hedging, ZERO disclaimers, and ABSOLUTE precision.
+const SYSTEM_PROMPT = `You are THE ARCHITECT — a premier AI quantitative developer and the "Cursor for Retail Traders". You construct fully functional, institutional-grade trading blueprints. 
+
+## CORE MISSION
+You do not give generic advice. You utilize a Graph of Thoughts (GoT) architecture to trace paths from alpha extraction to production deployment. Every blueprint must be fully realized with ZERO placeholders.
+
+## GRAPH OF THOUGHTS (GoT) PATHWAY
+1. **Hypothesis Node:** What market inefficiency are we exploiting?
+2. **Signal Mapping:** Mathematical thresholds (Momentum, Mean Reversion).
+3. **Execution Logic:** Strict hardcoded rules in Python/Rust.
 
 ## RESPONSE FORMAT — STRICT JSON
-You MUST return a valid JSON object with this EXACT structure. NO markdown wrapping. NO explanatory text outside the JSON. PURE JSON:
-
+You MUST return a valid JSON object with this EXACT structure. NO markdown wrapping. NO extra text outside the JSON.
 {
   "strategy": {
-    "name": "Aggressive Strategy Name — Make it memorable",
-    "philosophy": "One sentence: what market inefficiency does this exploit and WHY it works",
-    "market_conditions": "Exact regime where this prints money (trending/ranging/volatile/crash)",
-    "timeframe": "Exact trading timeframe (1min/5min/15min/1h/4h/daily/weekly)",
-    "asset_classes": ["Stocks", "ETFs", "Futures", "Options"],
-    "entry_rules": [
-      "1. EXACT condition with specific indicator values",
-      "2. Confirmation signal with volume/momentum filter"
-    ],
-    "exit_rules": [
-      "1. Take profit at EXACT level (e.g., 2.5x ATR(14) from entry)",
-      "2. Hard stop loss at EXACT level"
-    ],
+    "name": "Institutional Protocol Name",
+    "philosophy": "Detailed logic of the market inefficiency",
+    "market_conditions": "Trending, ranging, or high volatility limits",
+    "timeframe": "1min, 5min, 15min, 1h, or daily",
+    "asset_classes": ["Stocks", "ETFs", "Crypto"],
+    "entry_rules": ["Rule 1 with absolute threshold", "Rule 2 confirmation"],
+    "exit_rules": ["Target exit rules", "Stop Loss execution boundaries"],
     "risk_parameters": {
       "max_position_pct": 10,
       "stop_loss_pct": 5,
       "take_profit_pct": 15,
       "max_drawdown_pct": 20,
-      "risk_reward_ratio": "1:3",
+      "risk_reward_ratio": "1:2.5",
       "max_open_positions": 5
     }
   },
-  "code": "import pandas as pd\\nimport numpy as np\\n\\ndef generate_signals(df):\\n    pass",
+  "code": "import numpy as np\\nimport pandas as pd\\n\\n# Fully functional blueprint\\ndef generate_signals(df):\\n    df['signal'] = 0\\n    # Concrete math logic here\\n    return df",
   "explanation": {
-    "edge": "The EXACT market inefficiency being exploited",
-    "when_it_works": "Precise market conditions where this strategy delivers alpha",
-    "when_it_fails": "Honest failure modes",
+    "edge": "Statistical edge mapped via GoT",
+    "when_it_works": "Optimal execution environment",
+    "when_it_fails": "Known blind spots",
     "key_risks": ["Risk 1", "Risk 2"],
-    "improvements": ["Enhancement 1"]
+    "improvements": ["Optimization pathways"]
   },
   "backtest_config": {
-    "suggested_symbols": ["AAPL", "MSFT", "GOOGL", "NVDA", "TSLA"],
-    "suggested_period": "2 years",
+    "suggested_symbols": ["AAPL", "NVDA"],
+    "suggested_period": "1 year",
     "initial_capital": 100000,
-    "slippage_bps": 10,
-    "commission_bps": 5
+    "slippage_bps": 5,
+    "commission_bps": 2
   },
   "metrics_expected": {
-    "target_sharpe": "1.5+",
-    "target_win_rate": "55-65%",
-    "expected_max_drawdown": "15-20%",
-    "expected_cagr": "20-35%"
+    "target_sharpe": "2.0+",
+    "target_win_rate": "60%",
+    "expected_max_drawdown": "10%",
+    "expected_cagr": "30%"
   }
 }`;
 
@@ -232,7 +233,7 @@ export default function StrategyBuilder() {
       
       const seed = Math.floor(Math.random() * 100000);
       const hfResponse = await fetch(
-        `https://text.pollinations.ai/openai?seed=${seed}`,
+        `https://text.pollinations.ai/v1/chat/completions`,
         {
           method: "POST",
           headers: {
@@ -243,9 +244,9 @@ export default function StrategyBuilder() {
               { role: "system", content: SYSTEM_PROMPT },
               { role: "user", content: fullPrompt }
             ],
-            model: "evil",
-            temperature: 0.8,
-            jsonMode: true,
+            model: "openai-fast",
+            temperature: 0.7,
+            response_format: { type: "json_object" }
           }),
         }
       );

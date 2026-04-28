@@ -4,7 +4,7 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { Float, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, TrendingUp, Shield, Target } from 'lucide-react';
+import { ArrowRight, TrendingUp, Shield, Target, Sparkles, Users, MessageSquare } from 'lucide-react';
 import quantsuiteLogo from '@/assets/quantsuite-logo.png';
 
 // Floating Particles Component
@@ -276,6 +276,140 @@ export default function Landing() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Scrollable Feature Showcase */}
+      <div className="relative z-10 py-24 bg-black/30 border-t border-b border-white/5">
+        <style>{`
+          .scrollbar-none::-webkit-scrollbar {
+            display: none;
+          }
+          .scrollbar-none {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+        `}</style>
+        <div className="max-w-7xl mx-auto px-6 mb-12">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+            <div className="space-y-4">
+              <span className="text-cyan-400 font-mono text-sm tracking-widest uppercase">Institutional Suite</span>
+              <h2 className="text-4xl md:text-5xl font-bold text-white">The QuantSuite Ecosystem</h2>
+            </div>
+            <p className="text-white/60 max-w-md">
+              Scroll through our specialized modules designed for extreme market environments.
+            </p>
+          </div>
+        </div>
+
+        {/* Horizontal Scroll Container */}
+        <div className="flex overflow-x-auto gap-6 px-6 md:px-[calc((100vw-1200px)/2)] pb-8 snap-x snap-mandatory scrollbar-none">
+          {[
+            {
+              title: "SwarmEngine AI",
+              desc: "Deploy autonomous agent swarms to analyze alternative data, detect information asymmetry, and synthesize multi-model alpha signals.",
+              icon: Sparkles,
+              color: "from-cyan-500/20 to-blue-500/20",
+              border: "border-cyan-500/30",
+              tag: "Intelligence"
+            },
+            {
+              title: "Factor Zoo Pipeline",
+              desc: "Access 93+ pre-built alpha factors. Test momentum, value, and quality metrics with instant cross-sectional ranking.",
+              icon: TrendingUp,
+              color: "from-purple-500/20 to-pink-500/20",
+              border: "border-purple-500/30",
+              tag: "Analytics"
+            },
+            {
+              title: "Walk-Forward Backtester",
+              desc: "Prevent overfitting. Our walk-forward engine optimizes parameters dynamically across shifting market regimes.",
+              icon: Target,
+              color: "from-yellow-500/20 to-orange-500/20",
+              border: "border-yellow-500/30",
+              tag: "Validation"
+            },
+            {
+              title: "Portfolio Terminal",
+              desc: "Institutional allocation with Black-Litterman optimization, risk parity, and real-time VaR (Value at Risk) tracking.",
+              icon: Shield,
+              color: "from-emerald-500/20 to-teal-500/20",
+              border: "border-emerald-500/30",
+              tag: "Risk Management"
+            }
+          ].map((item, index) => (
+            <div 
+              key={index}
+              className={`flex-shrink-0 w-[350px] md:w-[400px] bg-gradient-to-br ${item.color} backdrop-blur-xl border ${item.border} rounded-2xl p-8 snap-center flex flex-col justify-between h-[300px] hover:translate-y-[-8px] transition-all duration-300 glow-card`}
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono px-3 py-1 bg-white/10 rounded-full text-white/80">
+                    {item.tag}
+                  </span>
+                  <item.icon className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-2xl font-bold text-white">{item.title}</h3>
+                <p className="text-white/70 text-sm leading-relaxed">{item.desc}</p>
+              </div>
+              <button className="flex items-center text-sm font-medium text-white hover:opacity-80 transition-opacity">
+                Explore Module <ArrowRight className="ml-2 w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Testimonials Section */}
+      <div className="relative z-10 py-24 bg-gradient-to-b from-transparent to-[#0D0D0F]">
+        <div className="max-w-7xl mx-auto px-6 text-center mb-16 space-y-4">
+          <span className="text-yellow-400 font-mono text-sm tracking-widest uppercase">Trusted by the Best</span>
+          <h2 className="text-4xl md:text-5xl font-bold text-white">Institutional Endorsements</h2>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto px-6">
+          {[
+            {
+              quote: "QuantSuite's SwarmEngine detected the oil supply squeeze 48 hours before the headlines hit. It's an indispensable edge.",
+              author: "Sarah Chen",
+              role: "Director of Alpha Capture",
+              company: "Aegis Capital",
+              avatar: "SC"
+            },
+            {
+              quote: "The Walk-Forward engine saved us from a disastrous overfitting loop in our volatility strategies. Pure institutional grade.",
+              author: "Marcus Vance",
+              role: "Head of Quantitative Research",
+              company: "Vertex Funds",
+              avatar: "MV"
+            },
+            {
+              quote: "A masterclass in UI and data density. Having Black-Scholes and Heston models side-by-side with AI signals is a game-changer.",
+              author: "David Kross",
+              role: "Senior Portfolio Manager",
+              company: "Nexus Trading",
+              avatar: "DK"
+            }
+          ].map((t, index) => (
+            <div 
+              key={index}
+              className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-8 flex flex-col justify-between space-y-6 hover:border-white/20 transition-all duration-300"
+            >
+              <div className="space-y-4">
+                <MessageSquare className="w-8 h-8 text-cyan-400 opacity-50" />
+                <p className="text-white/80 italic text-sm leading-relaxed">"{t.quote}"</p>
+              </div>
+              <div className="flex items-center space-x-4 pt-4 border-t border-white/5">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-yellow-400 flex items-center justify-center font-bold text-black text-sm">
+                  {t.avatar}
+                </div>
+                <div>
+                  <h4 className="text-white font-semibold text-sm">{t.author}</h4>
+                  <p className="text-white/50 text-xs">{t.role} • {t.company}</p>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 

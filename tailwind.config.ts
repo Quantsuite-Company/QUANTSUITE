@@ -113,6 +113,15 @@ export default {
         'qs-market-closed': 'hsl(var(--qs-market-closed))',
         'qs-market-pre': 'hsl(var(--qs-market-pre))',
         'qs-market-post': 'hsl(var(--qs-market-post))',
+				bg: {
+					primary:   '#0a0e1a',
+					secondary: '#111827',
+					card:      '#131c2e',
+					elevated:  '#1a2235',
+				},
+				positive: '#22c55e',
+				negative: '#ef4444',
+				signal:   '#f59e0b',
 				
 				sidebar: {
 					DEFAULT: 'hsl(var(--sidebar-background))',
@@ -146,11 +155,17 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				ticker: {
+					'0%': { transform: 'translateX(0)' },
+					'100%': { transform: 'translateX(-50%)' },
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'ticker-scroll': 'ticker 28s linear infinite',
+				'pulse-dot': 'pulse 1.5s ease-in-out infinite',
 			},
 			boxShadow: {
 				'chart-glow': '0 0 30px hsl(var(--glow-cyan) / 0.15)',

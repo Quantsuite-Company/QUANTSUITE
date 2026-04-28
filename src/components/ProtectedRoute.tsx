@@ -10,6 +10,8 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading && !user) {
       navigate('/login');
+    } else if (!loading && user && !user.user_metadata?.onboarding_completed && window.location.pathname !== '/onboarding') {
+      navigate('/onboarding');
     }
   }, [user, loading, navigate]);
 
