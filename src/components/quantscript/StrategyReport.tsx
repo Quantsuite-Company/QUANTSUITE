@@ -11,6 +11,7 @@ import { runBacktest, type BacktestConfig, type BacktestResult } from '@/lib/bac
 import { Highlight } from "prism-react-renderer";
 import { format as formatDt } from "date-fns";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import WalkForwardBacktest from '@/pages/WalkForwardBacktest';
 
 // ============================================================
 // TYPE DEFINITIONS
@@ -691,6 +692,11 @@ export function StrategyReport({ strategy, config, onReset, modelSource, origina
             </div>
           </motion.div>
         )}
+
+        {/* ===== ROW 5.5: WALK-FORWARD TRUTH MACHINE ===== */}
+        <div className="mt-8 border border-white/10 rounded-xl overflow-hidden shadow-2xl relative">
+          <WalkForwardBacktest initialThesis={originalPrompt || strat?.philosophy} />
+        </div>
 
         {/* ===== ROW 6: NLP Explainer (Newspaper Format - Dark Mode) ===== */}
         <div className="w-full bg-[#0a0a0a] text-[#f8f7f3] p-8 md:p-12 border-t-[12px] border-[#1e1e1e] shadow-2xl relative overflow-hidden mt-8 rounded-sm ring-1 ring-white/5">

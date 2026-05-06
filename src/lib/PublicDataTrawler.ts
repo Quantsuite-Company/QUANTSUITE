@@ -3,6 +3,8 @@
  * Integrates: Finnhub (free), SEC EDGAR (free), FRED (free), Twelve Data (free)
  * Features: Intelligent caching with TTL, data freshness tracking, zero Math.random() fallbacks
  */
+import { supabase } from '@/integrations/supabase/client';
+
 
 // SEC requires a defined User-Agent for their free EDGAR API.
 const SEC_HEADERS = {
@@ -245,28 +247,12 @@ export const PublicDataTrawler = {
    * Fetches historical price data for the math engine.
    * Tries multiple sources with intelligent fallback.
    */
-  async fetchHistoricalPrices(ticker: string, range: string = '1y'): Promise<{ prices: number[], source: 'TWELVE_DATA' | 'YAHOO' | 'SYNTHETIC' }> {
-    const cacheKey = `hist_${ticker}_${range}`;
+  async fetchHistoricalPrices(ticker: string, range: string = '1y'): Promise<{ prices: number[], source: 'YAHOO_BACKEND' | 'TWELVE_DATA' | 'YAHOO' | 'SYNTHETIC' }> {
+    const cacheKey = `hist_v4_${ticker}_${range}`;
     const cached = getCached(cacheKey);
     if (cached) { logFreshness('Historical (cached)', true, true); return cached; }
 
-    // === ATTEMPT 1: Twelve Data (free tier — 800 calls/day, proper CORS) ===
-    try {
-      const tdKey = import.meta.env.VITE_TWELVEDATA_KEY || '';
-      const res = await fetch(`https://api.twelvedata.com/time_series?symbol=${ticker}&interval=1day&outputsize=252&apikey=${tdKey}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.values && data.values.length > 20) {
-          const closes = data.values.map((v: any) => parseFloat(v.close)).reverse(); // API returns newest-first
-          const result = { prices: closes, source: 'TWELVE_DATA' as const };
-          setCache(cacheKey, result, 60 * 60 * 1000);
-          logFreshness('Twelve Data', false, true);
-          return result;
-        }
-      }
-    } catch (e) { /* Twelve Data failed */ }
-
-    // === ATTEMPT 2: Yahoo via CORS proxy ===
+    // === ATTEMPT 1: Yahoo via CORS proxy (Most reliable for >2y data) ===
     try {
       const corsProxy = 'https://api.allorigins.win/raw?url=';
       const targetUrl = encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=${range}`);
@@ -283,13 +269,27 @@ export const PublicDataTrawler = {
       }
     } catch (e) { /* Yahoo failed */ }
 
+    // === ATTEMPT 2: Supabase Edge Function (Reliable but remote is outdated to 2y max) ===
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-stock-data', {
+        body: { symbol: ticker, period: range }
+      });
+      if (!error && data?.chartData && data.chartData.length > 20) {
+        const closes = data.chartData.map((v: any) => parseFloat(v.close)); // Already oldest-to-newest
+        const result = { prices: closes, source: 'YAHOO_BACKEND' as const };
+        setCache(cacheKey, result, 60 * 60 * 1000);
+        logFreshness('Backend Pricing (Supabase)', false, true);
+        return result;
+      }
+    } catch (e) { /* Edge function failed */ }
+
     // === FALLBACK: High-amplitude deterministic proxy (clearly labeled) ===
     logFreshness('Historical', false, false, 'All APIs failed — using structural proxy');
     const seed = ticker.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
     const basePrice = 80 + (seed % 150); // $80-$230 range based on ticker
     const trendBias = ((seed % 5) - 2) * 0.0006; // -0.12% to +0.12% daily drift
     const curve: number[] = [basePrice];
-    for (let i = 1; i < 252; i++) {
+    for (let i = 1; i < 1500; i++) {
       // High-amplitude multi-frequency oscillation for backtester signal generation
       const momentum = Math.sin(i / 8) * 0.025;      // ±2.5% 8-day cycle
       const swing    = Math.sin(i / 20) * 0.035;      // ±3.5% 20-day swing

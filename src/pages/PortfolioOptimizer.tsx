@@ -280,8 +280,8 @@ export default function PortfolioOptimizer() {
          <div className="flex items-center gap-3 border-r border-white/10 pr-6 mr-6 h-full py-2">
             <Calculator className="w-5 h-5 text-[#88ddff]" />
             <div className="text-[10px] uppercase tracking-widest leading-tight text-[#88ddff] font-bold">
-               PORTFOLIO_OPTIMIZER <br/>
-               <span className="text-white/40 font-light">EFFICIENT FRONTIER ENGINE</span>
+               Portfolio Optimizer <br/>
+               <span className="text-white/40 font-light">Efficient Frontier Engine</span>
             </div>
          </div>
          
@@ -459,7 +459,7 @@ export default function PortfolioOptimizer() {
             <span>{results && `SYSTEM MIN_RISK BOUNDARY: ${(results.minVariance.expectedRisk * 100).toFixed(2)}%`}</span>
          </div>
          <div className="text-[#88ddff]/70">
-            P-OPT LATENCY: 12ms | QUANT_OS_V2
+            Optimization Complete
          </div>
       </div>
     </div>

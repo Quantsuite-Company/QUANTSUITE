@@ -1,15 +1,20 @@
 import { useState } from 'react';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { QuantSuiteSEO } from '@/components/QuantSuiteSEO';
-import { motion } from 'framer-motion';
-import { staggerContainer, staggerItem } from '@/components/ui/motion';
-import { Zap, AlertTriangle } from 'lucide-react';
 import { JumpDiffusionModel as JumpDiffusionPricer } from '@/lib/advancedPricing';
-import { ChartContainer, TerminalBarChart, TerminalLineChart, chartColors } from '@/components/charts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+
+const C = {
+  bg: '#050505',
+  panel: '#0a0a0c',
+  border: 'rgba(255,255,255,0.1)',
+  textH: '#ffffff',
+  textM: 'rgba(255,255,255,0.7)',
+  textD: 'rgba(255,255,255,0.4)',
+  amber: '#f59e0b',
+  red: '#f43f5e',
+};
+
+const FONT = '"Times New Roman", Times, serif';
 
 export default function JumpDiffusion() {
   const [params, setParams] = useState({
@@ -38,7 +43,6 @@ export default function JumpDiffusion() {
       try {
         const result = jumpModel.price(params);
         
-        // Calculate Greeks using finite differences
         const greeks = {
           delta: 0.58,
           gamma: 0.025,
@@ -47,17 +51,25 @@ export default function JumpDiffusion() {
           rho: 22.1,
         };
         
-        // Generate jump scenarios
-        const jumpScenarios = generateJumpScenarios();
-        const tailRiskMetrics = calculateTailRisk();
-        const jumpDistribution = generateJumpDistribution();
+        // Generate jump distribution for chart
+        const jumpDistribution = [];
+        for (let x = -50; x <= 20; x += 2) {
+          const jumpSize = x / 100;
+          const pdf = Math.exp(-Math.pow(jumpSize - params.muJ, 2) / (2 * params.sigmaJ * params.sigmaJ)) / (params.sigmaJ * Math.sqrt(2 * Math.PI));
+          jumpDistribution.push({
+            jumpSize: x,
+            density: parseFloat(pdf.toFixed(4)),
+          });
+        }
+
+        const expectedJumpLoss = params.lambda * params.muJ * params.S;
+        const jumpVaR95 = params.S * (params.muJ - 1.645 * params.sigmaJ);
         
         setResults({
           ...result,
           greeks,
-          jumpScenarios,
-          tailRiskMetrics,
           jumpDistribution,
+          tailRisk: { expectedJumpLoss, jumpVaR95 }
         });
       } catch (error) {
         console.error('Jump Diffusion pricing error:', error);
@@ -66,343 +78,168 @@ export default function JumpDiffusion() {
     }, 100);
   };
 
-  const generateJumpScenarios = () => {
-    const scenarios = [];
-    for (let i = 0; i <= 10; i++) {
-      const jumpSize = params.muJ + (i - 5) * params.sigmaJ * 0.5;
-      const probability = Math.exp(-Math.pow(jumpSize - params.muJ, 2) / (2 * params.sigmaJ * params.sigmaJ));
-      scenarios.push({
-        jumpSize: (jumpSize * 100).toFixed(2) + '%',
-        probability: probability * 100,
-        impact: params.S * jumpSize,
-      });
-    }
-    return scenarios;
-  };
-
-  const generateJumpDistribution = () => {
-    const data = [];
-    for (let x = -50; x <= 20; x += 5) {
-      const jumpSize = x / 100;
-      const pdf = Math.exp(-Math.pow(jumpSize - params.muJ, 2) / (2 * params.sigmaJ * params.sigmaJ)) / (params.sigmaJ * Math.sqrt(2 * Math.PI));
-      data.push({
-        jumpSize: `${x}%`,
-        density: pdf * 100,
-      });
-    }
-    return data;
-  };
-
-  const calculateTailRisk = () => {
-    const expectedJumpLoss = params.lambda * params.muJ * params.S;
-    const jumpVaR95 = params.S * (params.muJ - 1.645 * params.sigmaJ);
-    const jumpVaR99 = params.S * (params.muJ - 2.326 * params.sigmaJ);
-    
-    return {
-      expectedJumpLoss: expectedJumpLoss.toFixed(2),
-      jumpVaR95: jumpVaR95.toFixed(2),
-      jumpVaR99: jumpVaR99.toFixed(2),
-      kurtosis: (3 + params.lambda * Math.pow(params.sigmaJ, 4)).toFixed(4),
-    };
-  };
+  const InputField = ({ label, param, step, symbol }: any) => (
+    <div className="flex flex-col border-b border-dashed pb-2" style={{ borderColor: C.border }}>
+      <label className="text-[10px] uppercase tracking-widest font-bold mb-1 flex justify-between" style={{ color: C.textD }}>
+        <span>{label}</span>
+        <span style={{ color: C.textH }}>{symbol}</span>
+      </label>
+      <input
+        type="number"
+        value={(params as any)[param]}
+        onChange={e => handleParamChange(param, parseFloat(e.target.value) || 0)}
+        step={step}
+        className="bg-transparent text-lg focus:outline-none font-bold"
+        style={{ color: C.amber }}
+      />
+    </div>
+  );
 
   return (
     <>
       <QuantSuiteSEO 
-        title="Merton Jump Diffusion Model | QuantSuite Tail Risk Options Pricing"
-        description="Price options with discontinuous jumps using the Merton Jump Diffusion model."
+        title="Merton Jump Diffusion Model"
+        description="Tail risk pricing with discontinuous jumps"
         path="/jump-diffusion"
       />
       
-      <div className="container mx-auto p-6 space-y-6">
-        <motion.div
-          variants={staggerContainer}
-          initial="hidden"
-          animate="show"
-          className="space-y-6"
-        >
-          {/* Header */}
-          <motion.div variants={staggerItem}>
-            <ChartContainer height="auto" className="p-6">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-600/20 flex items-center justify-center border border-amber-500/30">
-                    <Zap className="w-6 h-6 text-amber-500" />
-                  </div>
-                  <div>
-                    <h1 className="text-3xl font-bold bg-gradient-to-r from-amber-400 to-orange-600 bg-clip-text text-transparent">
-                      Merton Jump Diffusion Model
-                    </h1>
-                    <p className="text-muted-foreground mt-1">
-                      Options pricing with discontinuous jumps and tail risk analysis
-                    </p>
-                  </div>
-                </div>
-                <Badge variant="outline" className="border-amber-500/30 text-amber-500">
-                  <AlertTriangle className="w-3 h-3 mr-1" />
-                  Tail Risk
-                </Badge>
+      <div className="min-h-screen w-full flex flex-col p-8" style={{ backgroundColor: C.bg, color: C.textH, fontFamily: FONT }}>
+        
+        {/* HEADER */}
+        <div className="border-b pb-6 mb-8 flex justify-between items-end" style={{ borderColor: C.border }}>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight uppercase" style={{ fontVariant: 'small-caps' }}>Merton Jump Diffusion Model</h1>
+            <p className="text-[10px] tracking-widest uppercase mt-2 font-bold" style={{ color: C.textD }}>
+              TAIL RISK PRICING // DISCONTINUOUS POISSON JUMP PROCESS
+            </p>
+          </div>
+          <button 
+            onClick={calculatePrice}
+            disabled={loading}
+            className="px-8 py-3 border text-[11px] font-bold tracking-widest uppercase hover:bg-white/5 transition-all"
+            style={{ borderColor: C.amber, color: C.amber }}
+          >
+            {loading ? 'COMPUTING PROCESS...' : 'EXECUTE PRICING'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-12 gap-8">
+          
+          {/* LEFT: Parameters */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col gap-8">
+            <div className="border p-6 shadow-2xl" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+              <h3 className="text-[10px] tracking-widest uppercase font-bold border-b pb-2 mb-6" style={{ color: C.textD, borderColor: C.border }}>
+                Gaussian Dynamics
+              </h3>
+              <div className="space-y-4">
+                <InputField label="Underlying Price" param="S" step="1" symbol="S" />
+                <InputField label="Strike Price" param="K" step="1" symbol="K" />
+                <InputField label="Time to Maturity (Y)" param="T" step="0.1" symbol="T" />
+                <InputField label="Risk-Free Rate" param="r" step="0.01" symbol="r" />
+                <InputField label="Diffusion Volatility" param="sigma" step="0.01" symbol="σ" />
               </div>
-            </ChartContainer>
-          </motion.div>
+            </div>
 
-          {/* Parameters Section */}
-          <motion.div variants={staggerItem}>
-            <ChartContainer title="Model Parameters" subtitle="Configure the Jump Diffusion model parameters for discontinuous price movements" height="auto" className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-                {/* Market Parameters */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Market Parameters</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="S" className="text-foreground">Stock Price (S)</Label>
-                      <Input
-                        id="S"
-                        type="number"
-                        value={params.S}
-                        onChange={(e) => handleParamChange('S', parseFloat(e.target.value) || 0)}
-                        step="1"
-                        className="bg-background/50 border-border/50"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="K" className="text-foreground">Strike Price (K)</Label>
-                      <Input
-                        id="K"
-                        type="number"
-                        value={params.K}
-                        onChange={(e) => handleParamChange('K', parseFloat(e.target.value) || 0)}
-                        step="1"
-                        className="bg-background/50 border-border/50"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="T" className="text-foreground">Time to Maturity (Years)</Label>
-                      <Input
-                        id="T"
-                        type="number"
-                        value={params.T}
-                        onChange={(e) => handleParamChange('T', parseFloat(e.target.value) || 0)}
-                        step="0.25"
-                        className="bg-background/50 border-border/50"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="r" className="text-foreground">Risk-Free Rate (%)</Label>
-                      <Input
-                        id="r"
-                        type="number"
-                        value={(params.r * 100).toFixed(2)}
-                        onChange={(e) => handleParamChange('r', (parseFloat(e.target.value) || 0) / 100)}
-                        step="0.1"
-                        className="bg-background/50 border-border/50"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="sigma" className="text-foreground">Diffusion Volatility (σ)</Label>
-                      <Input
-                        id="sigma"
-                        type="number"
-                        value={(params.sigma * 100).toFixed(2)}
-                        onChange={(e) => handleParamChange('sigma', (parseFloat(e.target.value) || 0) / 100)}
-                        step="1"
-                        className="bg-background/50 border-border/50"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">Continuous volatility</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Jump Parameters */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Jump Process</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <Label htmlFor="lambda" className="text-foreground">Jump Intensity (λ)</Label>
-                      <Input
-                        id="lambda"
-                        type="number"
-                        value={params.lambda}
-                        onChange={(e) => handleParamChange('lambda', parseFloat(e.target.value) || 0)}
-                        step="0.1"
-                        className="bg-background/50 border-border/50"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Expected jumps per year
-                      </p>
-                    </div>
-                    <div>
-                      <Label htmlFor="muJ" className="text-foreground">Mean Jump Size (μⱼ)</Label>
-                      <Input
-                        id="muJ"
-                        type="number"
-                        value={(params.muJ * 100).toFixed(2)}
-                        onChange={(e) => handleParamChange('muJ', (parseFloat(e.target.value) || 0) / 100)}
-                        step="1"
-                        className="bg-background/50 border-border/50"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Average jump size (% of price)
-                      </p>
-                    </div>
-                    <div>
-                      <Label htmlFor="sigmaJ" className="text-foreground">Jump Volatility (σⱼ)</Label>
-                      <Input
-                        id="sigmaJ"
-                        type="number"
-                        value={(params.sigmaJ * 100).toFixed(2)}
-                        onChange={(e) => handleParamChange('sigmaJ', (parseFloat(e.target.value) || 0) / 100)}
-                        step="1"
-                        className="bg-background/50 border-border/50"
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Jump size standard deviation
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Risk Metrics */}
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Risk Metrics</h3>
-                  <div className="space-y-3">
-                    <div className="p-4 rounded-lg border border-border/30 bg-background/30">
-                      <p className="text-xs text-muted-foreground mb-1">Expected Jump Frequency</p>
-                      <p className="text-lg font-bold text-foreground">
-                        {params.lambda.toFixed(2)} / year
-                      </p>
-                    </div>
-                    <div className="p-4 rounded-lg border border-border/30 bg-background/30">
-                      <p className="text-xs text-muted-foreground mb-1">Expected Jump Impact</p>
-                      <p className="text-lg font-bold" style={{ color: chartColors.loss }}>
-                        ${(params.S * params.muJ).toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="p-4 rounded-lg border border-border/30 bg-background/30">
-                      <p className="text-xs text-muted-foreground mb-1">Total Volatility</p>
-                      <p className="text-lg font-bold text-foreground">
-                        {(Math.sqrt(params.sigma * params.sigma + params.lambda * params.sigmaJ * params.sigmaJ) * 100).toFixed(2)}%
-                      </p>
-                    </div>
-                    <div className="pt-4">
-                      <Button 
-                        onClick={calculatePrice}
-                        disabled={loading}
-                        className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white"
-                      >
-                        {loading ? 'Calculating...' : 'Calculate Price'}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
+            <div className="border p-6 shadow-2xl" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+              <h3 className="text-[10px] tracking-widest uppercase font-bold border-b pb-2 mb-6" style={{ color: C.textD, borderColor: C.border }}>
+                Poisson Jump Process
+              </h3>
+              <div className="space-y-4">
+                <InputField label="Jump Intensity (per Y)" param="lambda" step="0.1" symbol="λ" />
+                <InputField label="Mean Jump Size" param="muJ" step="0.01" symbol="μⱼ" />
+                <InputField label="Jump Volatility" param="sigmaJ" step="0.01" symbol="σⱼ" />
               </div>
-            </ChartContainer>
-          </motion.div>
+            </div>
+          </div>
 
-          {/* Results Section */}
-          {results && (
-            <motion.div variants={staggerItem}>
-              <Tabs defaultValue="pricing" className="space-y-4">
-                <TabsList className="bg-card/50 border border-border/30">
-                  <TabsTrigger value="pricing">Pricing Results</TabsTrigger>
-                  <TabsTrigger value="greeks">Greeks</TabsTrigger>
-                  <TabsTrigger value="jumps">Jump Distribution</TabsTrigger>
-                  <TabsTrigger value="tail">Tail Risk</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="pricing" className="space-y-4">
-                  <ChartContainer title="Option Price with Jumps" height="auto" className="p-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4">
-                      <div className="text-center p-6 rounded-lg border border-border/30 bg-background/30">
-                        <p className="text-sm text-muted-foreground mb-2">Call Option</p>
-                        <p className="text-3xl font-bold" style={{ color: chartColors.amber }}>
-                          ${results.price.toFixed(4)}
-                        </p>
+          {/* RIGHT: Output & Visualization */}
+          <div className="col-span-12 lg:col-span-8 flex flex-col gap-8">
+            {!results ? (
+              <div className="flex-1 border border-dashed flex items-center justify-center opacity-30" style={{ borderColor: C.textD }}>
+                <span className="text-[10px] tracking-widest uppercase font-bold">AWAITING PARAMETER EXECUTION</span>
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="border p-6 flex flex-col justify-center items-center shadow-2xl" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+                    <span className="text-[10px] tracking-widest uppercase font-bold mb-2" style={{ color: C.textD }}>European Call Value</span>
+                    <span className="text-4xl font-light" style={{ color: C.amber }}>${results.price.toFixed(4)}</span>
+                  </div>
+                  <div className="border p-6 shadow-2xl" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+                    <span className="text-[10px] tracking-widest uppercase font-bold border-b pb-2 mb-4 block" style={{ color: C.textD, borderColor: C.border }}>Tail Risk Bounds</span>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between items-center text-sm">
+                        <span style={{ color: C.textM }}>Expected Jump Loss</span>
+                        <span className="font-bold" style={{ color: C.red }}>${results.tailRisk.expectedJumpLoss.toFixed(2)}</span>
                       </div>
-                      <div className="text-center p-6 rounded-lg border border-border/30 bg-background/30">
-                        <p className="text-sm text-muted-foreground mb-2">Model</p>
-                        <p className="text-xl font-semibold text-foreground">{results.model}</p>
-                      </div>
-                      <div className="text-center p-6 rounded-lg border border-border/30 bg-background/30">
-                        <p className="text-sm text-muted-foreground mb-2">Jump Component</p>
-                        <Badge variant="outline" className="text-xs">
-                          {(params.lambda * params.T).toFixed(2)} expected jumps
-                        </Badge>
+                      <div className="flex justify-between items-center text-sm">
+                        <span style={{ color: C.textM }}>Jump VaR (95%)</span>
+                        <span className="font-bold" style={{ color: C.red }}>${results.tailRisk.jumpVaR95.toFixed(2)}</span>
                       </div>
                     </div>
-                  </ChartContainer>
-                </TabsContent>
-
-                <TabsContent value="greeks" className="space-y-4">
-                  <ChartContainer title="Option Greeks" height="auto" className="p-6">
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-4">
-                      {[
-                        { name: 'Delta (Δ)', value: results.greeks.delta, color: chartColors.cyan },
-                        { name: 'Gamma (Γ)', value: results.greeks.gamma, color: chartColors.profit },
-                        { name: 'Vega (ν)', value: results.greeks.vega, color: chartColors.amber },
-                        { name: 'Theta (Θ)', value: results.greeks.theta, color: chartColors.loss },
-                        { name: 'Rho (ρ)', value: results.greeks.rho, color: chartColors.purple },
-                      ].map((greek) => (
-                        <div key={greek.name} className="text-center p-4 rounded-lg border border-border/30 bg-background/30">
-                          <p className="text-xs text-muted-foreground mb-1">{greek.name}</p>
-                          <p className="text-xl font-bold" style={{ color: greek.color }}>
-                            {greek.value.toFixed(4)}
-                          </p>
+                  </div>
+                  <div className="border p-6 shadow-2xl" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+                    <span className="text-[10px] tracking-widest uppercase font-bold border-b pb-2 mb-4 block" style={{ color: C.textD, borderColor: C.border }}>Greeks Approximation</span>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                      {Object.keys(results.greeks).map(greek => (
+                        <div key={greek} className="flex justify-between items-center text-xs">
+                          <span className="capitalize" style={{ color: C.textD }}>{greek}</span>
+                          <span className="font-bold" style={{ color: C.textH }}>{results.greeks[greek].toFixed(2)}</span>
                         </div>
                       ))}
                     </div>
-                  </ChartContainer>
-                </TabsContent>
+                  </div>
+                </div>
 
-                <TabsContent value="jumps" className="space-y-4">
-                  {results.jumpDistribution && (
-                    <TerminalLineChart
-                      data={results.jumpDistribution}
-                      lines={[
-                        { dataKey: 'density', name: 'Probability Density', color: chartColors.amber, showArea: true },
-                      ]}
-                      xAxisKey="jumpSize"
-                      title="Jump Size Distribution"
-                      subtitle="Probability density of jump magnitudes"
-                      height={350}
-                    />
-                  )}
-                </TabsContent>
-
-                <TabsContent value="tail" className="space-y-4">
-                  <ChartContainer title="Tail Risk Metrics" height="auto" className="p-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-                      <div className="text-center p-4 rounded-lg border border-border/30 bg-background/30">
-                        <p className="text-xs text-muted-foreground mb-1">Expected Jump Loss</p>
-                        <p className="text-xl font-bold" style={{ color: chartColors.loss }}>
-                          ${results.tailRiskMetrics.expectedJumpLoss}
-                        </p>
-                      </div>
-                      <div className="text-center p-4 rounded-lg border border-border/30 bg-background/30">
-                        <p className="text-xs text-muted-foreground mb-1">Jump VaR (95%)</p>
-                        <p className="text-xl font-bold" style={{ color: chartColors.loss }}>
-                          ${results.tailRiskMetrics.jumpVaR95}
-                        </p>
-                      </div>
-                      <div className="text-center p-4 rounded-lg border border-border/30 bg-background/30">
-                        <p className="text-xs text-muted-foreground mb-1">Jump VaR (99%)</p>
-                        <p className="text-xl font-bold" style={{ color: chartColors.loss }}>
-                          ${results.tailRiskMetrics.jumpVaR99}
-                        </p>
-                      </div>
-                      <div className="text-center p-4 rounded-lg border border-border/30 bg-background/30">
-                        <p className="text-xs text-muted-foreground mb-1">Excess Kurtosis</p>
-                        <p className="text-xl font-bold text-foreground">
-                          {results.tailRiskMetrics.kurtosis}
-                        </p>
-                      </div>
-                    </div>
-                  </ChartContainer>
-                </TabsContent>
-              </Tabs>
-            </motion.div>
-          )}
-        </motion.div>
+                <div className="flex-1 border p-6 shadow-2xl flex flex-col" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+                  <div className="text-[10px] tracking-widest uppercase font-bold border-b pb-2 mb-6 flex justify-between" style={{ color: C.textD, borderColor: C.border }}>
+                    <span>Probability Density Function</span>
+                    <span>Merton Jump Distribution</span>
+                  </div>
+                  <div className="flex-1 min-h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={results.jumpDistribution} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="colorDensity" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor={C.amber} stopOpacity={0.4}/>
+                            <stop offset="95%" stopColor={C.amber} stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false} />
+                        <XAxis 
+                          dataKey="jumpSize" 
+                          stroke={C.textD} 
+                          fontSize={10} 
+                          tickFormatter={(v) => `${v}%`}
+                          fontFamily={FONT}
+                        />
+                        <YAxis 
+                          stroke={C.textD} 
+                          fontSize={10}
+                          fontFamily={FONT}
+                        />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#000', borderColor: C.border, fontFamily: FONT }}
+                          itemStyle={{ color: C.amber }}
+                          formatter={(val: number) => [val, 'Density']}
+                          labelFormatter={(l) => `Jump Magnitude: ${l}%`}
+                        />
+                        <Area 
+                          type="monotone" 
+                          dataKey="density" 
+                          stroke={C.amber} 
+                          fillOpacity={1} 
+                          fill="url(#colorDensity)" 
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          
+        </div>
       </div>
     </>
   );

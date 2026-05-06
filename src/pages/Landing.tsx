@@ -147,6 +147,141 @@ const GlassmorphicNav = ({ navigate }: { navigate: (path: string) => void }) => 
   );
 };
 
+// --- Candlestick Feature Showcase ---
+interface Feature {
+  id: string;
+  title: string;
+  desc: string;
+  color: 'green' | 'red';
+  high: number;
+  low: number;
+  open: number;
+  close: number;
+}
+
+const featuresData: Feature[] = [
+  {
+    id: 'f1',
+    title: 'SwarmEngine AI',
+    desc: 'Deploy autonomous agent swarms to analyze alternative data and synthesize alpha.',
+    color: 'green',
+    high: 95, low: 20, open: 40, close: 85
+  },
+  {
+    id: 'f2',
+    title: 'Factor Zoo Pipeline',
+    desc: 'Access 93+ pre-built alpha factors with instant cross-sectional ranking.',
+    color: 'red',
+    high: 85, low: 10, open: 80, close: 30
+  },
+  {
+    id: 'f3',
+    title: 'Walk-Forward Engine',
+    desc: 'Prevent overfitting by optimizing parameters across shifting market regimes.',
+    color: 'green',
+    high: 90, low: 30, open: 35, close: 75
+  },
+  {
+    id: 'f4',
+    title: 'Portfolio Terminal',
+    desc: 'Institutional allocation with Black-Litterman optimization and VaR tracking.',
+    color: 'red',
+    high: 70, low: 15, open: 65, close: 25
+  },
+  {
+    id: 'f5',
+    title: 'Live Execution',
+    desc: 'Hook directly into MetaTrader 5 or broker APIs for autonomous high-frequency trading.',
+    color: 'green',
+    high: 100, low: 40, open: 50, close: 90
+  }
+];
+
+const CandlestickShowcase = () => {
+  const [activeFeature, setActiveFeature] = useState<Feature | null>(null);
+
+  return (
+    <div className="relative z-10 py-24 bg-black/30 border-t border-b border-white/5 font-serif">
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="text-center mb-16 space-y-4">
+          <span className="text-white/40 tracking-widest uppercase text-xs">Institutional Suite</span>
+          <h2 className="text-4xl md:text-5xl font-bold text-white tracking-widest">The QuantSuite Ecosystem</h2>
+        </div>
+
+        <div className="flex flex-col lg:flex-row gap-12 items-center">
+          {/* Chart Display */}
+          <div className="w-full lg:w-2/3 h-[400px] bg-black/50 border border-white/10 rounded-xl p-8 relative flex items-end justify-around glow-card">
+            {/* Grid lines */}
+            <div className="absolute inset-0 pointer-events-none opacity-10">
+              <div className="w-full h-px bg-white absolute top-1/4" />
+              <div className="w-full h-px bg-white absolute top-2/4" />
+              <div className="w-full h-px bg-white absolute top-3/4" />
+            </div>
+
+            {featuresData.map((f, i) => {
+              const isGreen = f.color === 'green';
+              const candleColor = isGreen ? 'bg-emerald-500' : 'bg-rose-500';
+              const wickColor = isGreen ? 'bg-emerald-500/50' : 'bg-rose-500/50';
+              
+              const topVal = Math.max(f.open, f.close);
+              const bottomVal = Math.min(f.open, f.close);
+              const bodyHeight = topVal - bottomVal;
+              const bodyBottom = bottomVal;
+
+              return (
+                <div 
+                  key={f.id}
+                  className="relative group cursor-crosshair w-12 flex justify-center h-full transition-all duration-300"
+                  onMouseEnter={() => setActiveFeature(f)}
+                  onMouseLeave={() => setActiveFeature(null)}
+                >
+                  {/* Wick */}
+                  <div 
+                    className={`absolute w-1 ${wickColor} rounded-full`}
+                    style={{ bottom: `${f.low}%`, height: `${f.high - f.low}%` }}
+                  />
+                  {/* Body */}
+                  <div 
+                    className={`absolute w-8 ${candleColor} rounded-sm shadow-[0_0_15px_rgba(0,0,0,0)] transition-all duration-300 group-hover:shadow-[0_0_25px_var(--tw-shadow-color)] ${isGreen ? 'shadow-emerald-500/50' : 'shadow-rose-500/50'}`}
+                    style={{ bottom: `${bodyBottom}%`, height: `${bodyHeight}%` }}
+                  />
+
+                  {/* Axis Label */}
+                  <div className="absolute -bottom-8 text-white/40 text-[10px] uppercase tracking-widest rotate-[-45deg] whitespace-nowrap">
+                    Feature {i + 1}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Details Panel */}
+          <div className="w-full lg:w-1/3 min-h-[200px]">
+            {activeFeature ? (
+              <div className="p-6 border border-white/20 bg-white/5 rounded-lg backdrop-blur-md animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className={`text-xs uppercase tracking-widest mb-4 ${activeFeature.color === 'green' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  Signal Detected
+                </div>
+                <h3 className="text-2xl text-white font-bold mb-3">{activeFeature.title}</h3>
+                <p className="text-white/70 leading-relaxed text-sm">{activeFeature.desc}</p>
+                <button className="mt-6 flex items-center text-xs tracking-widest uppercase text-white hover:text-cyan-400 transition-colors">
+                  Initialize Module <ArrowRight className="ml-2 w-3 h-3" />
+                </button>
+              </div>
+            ) : (
+              <div className="h-full flex items-center justify-center border border-white/5 border-dashed rounded-lg p-8">
+                <p className="text-white/30 text-center text-sm italic">
+                  Hover over the signal candlesticks to inspect ecosystem modules.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Main Landing Component
 export default function Landing() {
   const navigate = useNavigate();
@@ -279,86 +414,7 @@ export default function Landing() {
         </div>
       </div>
 
-      {/* Scrollable Feature Showcase */}
-      <div className="relative z-10 py-24 bg-black/30 border-t border-b border-white/5">
-        <style>{`
-          .scrollbar-none::-webkit-scrollbar {
-            display: none;
-          }
-          .scrollbar-none {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-          }
-        `}</style>
-        <div className="max-w-7xl mx-auto px-6 mb-12">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-            <div className="space-y-4">
-              <span className="text-cyan-400 font-mono text-sm tracking-widest uppercase">Institutional Suite</span>
-              <h2 className="text-4xl md:text-5xl font-bold text-white">The QuantSuite Ecosystem</h2>
-            </div>
-            <p className="text-white/60 max-w-md">
-              Scroll through our specialized modules designed for extreme market environments.
-            </p>
-          </div>
-        </div>
-
-        {/* Horizontal Scroll Container */}
-        <div className="flex overflow-x-auto gap-6 px-6 md:px-[calc((100vw-1200px)/2)] pb-8 snap-x snap-mandatory scrollbar-none">
-          {[
-            {
-              title: "SwarmEngine AI",
-              desc: "Deploy autonomous agent swarms to analyze alternative data, detect information asymmetry, and synthesize multi-model alpha signals.",
-              icon: Sparkles,
-              color: "from-cyan-500/20 to-blue-500/20",
-              border: "border-cyan-500/30",
-              tag: "Intelligence"
-            },
-            {
-              title: "Factor Zoo Pipeline",
-              desc: "Access 93+ pre-built alpha factors. Test momentum, value, and quality metrics with instant cross-sectional ranking.",
-              icon: TrendingUp,
-              color: "from-purple-500/20 to-pink-500/20",
-              border: "border-purple-500/30",
-              tag: "Analytics"
-            },
-            {
-              title: "Walk-Forward Backtester",
-              desc: "Prevent overfitting. Our walk-forward engine optimizes parameters dynamically across shifting market regimes.",
-              icon: Target,
-              color: "from-yellow-500/20 to-orange-500/20",
-              border: "border-yellow-500/30",
-              tag: "Validation"
-            },
-            {
-              title: "Portfolio Terminal",
-              desc: "Institutional allocation with Black-Litterman optimization, risk parity, and real-time VaR (Value at Risk) tracking.",
-              icon: Shield,
-              color: "from-emerald-500/20 to-teal-500/20",
-              border: "border-emerald-500/30",
-              tag: "Risk Management"
-            }
-          ].map((item, index) => (
-            <div 
-              key={index}
-              className={`flex-shrink-0 w-[350px] md:w-[400px] bg-gradient-to-br ${item.color} backdrop-blur-xl border ${item.border} rounded-2xl p-8 snap-center flex flex-col justify-between h-[300px] hover:translate-y-[-8px] transition-all duration-300 glow-card`}
-            >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono px-3 py-1 bg-white/10 rounded-full text-white/80">
-                    {item.tag}
-                  </span>
-                  <item.icon className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="text-2xl font-bold text-white">{item.title}</h3>
-                <p className="text-white/70 text-sm leading-relaxed">{item.desc}</p>
-              </div>
-              <button className="flex items-center text-sm font-medium text-white hover:opacity-80 transition-opacity">
-                Explore Module <ArrowRight className="ml-2 w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
+      <CandlestickShowcase />
 
       {/* Testimonials Section */}
       <div className="relative z-10 py-24 bg-gradient-to-b from-transparent to-[#0D0D0F]">

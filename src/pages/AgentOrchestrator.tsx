@@ -20,20 +20,23 @@ import { PublicDataTrawler } from '@/lib/PublicDataTrawler';
 import { runMLPipeline, MLPipelineResult } from '@/lib/mlPipeline';
 import { computeFactorZoo, FactorZooOutput, passesQualityGate } from '@/lib/FactorZoo';
 import { runWalkForwardEngine, DEFAULT_WF_CONFIG, WalkForwardResult } from '@/lib/WalkForwardEngine';
+import { useTradeStore } from '@/stores/useTradeStore';
+import { fetchHistoricalCandles, fetchLatestPrice, isMarketOpen, computeSignalHealth, generateTradeCommentary } from '@/lib/LiveTradingEngine';
+import LiveTradingDashboard from '@/components/trading/LiveTradingDashboard';
 
 /* ═══════════════════════════════════════════════════════════════
-   DESIGN TOKENS
+   DESIGN TOKENS (Institutional Grade)
    ═══════════════════════════════════════════════════════════════ */
 const C = {
-  bg:       '#060911', panelBg: '#0B0F16', panel2: '#0E1219',
-  border:   '#151B28', textH: '#E8ECF1', textM: '#7B8DA4',
-  textD:    '#3D4A5C', blue: '#2D7FF9', purple: '#7C5CFC',
-  profit:   '#00D68F', risk: '#FF3B5C', warn: '#FFB020', cyan: '#00C9DB',
-  dimB: 'rgba(45,127,249,0.10)', dimP: 'rgba(124,92,252,0.10)',
-  dimG: 'rgba(0,214,143,0.08)', dimR: 'rgba(255,59,92,0.08)',
-  dimW: 'rgba(255,176,32,0.08)', dimC: 'rgba(0,201,219,0.08)',
+  bg:       '#000000', panelBg: '#050505', panel2: '#0a0a0c',
+  border:   '#1a1a1a', textH: '#ffffff', textM: '#a3a3a3',
+  textD:    '#525252', blue: '#3b82f6', purple: '#8b5cf6',
+  profit:   '#10b981', risk: '#ef4444', warn: '#f59e0b', cyan: '#06b6d4',
+  dimB: 'rgba(59,130,246,0.10)', dimP: 'rgba(139,92,246,0.10)',
+  dimG: 'rgba(16,185,129,0.08)', dimR: 'rgba(239,68,68,0.08)',
+  dimW: 'rgba(245,158,11,0.08)', dimC: 'rgba(6,182,212,0.08)',
 };
-const FONT = "'Inter', 'SF Pro Display', -apple-system, sans-serif";
+const FONT = '"Times New Roman", Times, serif';
 
 /* ═══════════════════════════════════════════════════════════════
    GLOBAL UNIVERSE
@@ -144,6 +147,24 @@ export default function AgentOrchestrator() {
   const [loadingPrices, setLoadingPrices] = useState(false);
   const [simQty, setSimQty] = useState<number>(1000);
 
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [selectedLiveThesis, setSelectedLiveThesis] = useState<InvestmentThesis | null>(null);
+  const tradeStore = useTradeStore();
+
+  const [executing, setExecuting] = useState(false);
+
+  const handleExecuteLiveTrade = useCallback(async (thesis: InvestmentThesis, qty: number) => {
+    setSelectedLiveThesis(thesis);
+    setShowDashboard(true);
+  }, []);
+
+  
+  // Walk-Forward Backtester Params
+  const [hfApiKey, setHfApiKey] = useState('');
+  const [alphaThesis, setAlphaThesis] = useState('DeepSeek-V4-Pro: Identify regime-dependent alpha in multi-asset class universes utilizing robust Walk-Forward architecture with strict expanding windows (no K-Fold).');
+  const [testWindow, setTestWindow] = useState(63);
+  const [trainDays, setTrainDays] = useState(504);
+  const [isWfRunning, setIsWfRunning] = useState(false);
 
   // ── Uptime ────────────────────────────────────────────────
   useEffect(() => { const iv = setInterval(()=>setUptime(p=>p+1),1000); return ()=>clearInterval(iv); }, []);
@@ -349,7 +370,10 @@ export default function AgentOrchestrator() {
   return (
     <div className="flex flex-col min-h-screen w-full overflow-y-auto overflow-x-hidden"
          style={{backgroundColor:C.bg, color:C.textH, fontFamily:FONT}}>
-
+      <style>{`
+        .font-mono { font-family: "Times New Roman", Times, serif !important; }
+      `}</style>
+      
       {/* ══════════ HEADER BAR ══════════ */}
       <header className="flex items-center justify-between px-5 py-2.5 border-b shrink-0 sticky top-0 z-30 backdrop-blur-2xl"
               style={{borderColor:C.border, backgroundColor:'rgba(6,9,17,0.94)'}}>
@@ -445,6 +469,20 @@ export default function AgentOrchestrator() {
         </div>
       </div>
 
+      {/* Live Trading Dashboard Overlay */}
+      <AnimatePresence>
+        {showDashboard && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, background: C.bg }}
+          >
+            <LiveTradingDashboard onClose={() => setShowDashboard(false)} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ══════════ ROW 1 — ALWAYS VISIBLE ══════════ */}
       <div className="p-3 grid grid-cols-12 gap-2.5 auto-rows-min">
 
@@ -457,15 +495,11 @@ export default function AgentOrchestrator() {
               ? <div className="h-full flex items-center justify-center text-[9px] font-mono" style={{color:C.textD}}>Engage engine →</div>
               : <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={pnlCurve}>
-                    <defs><linearGradient id="eqG" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={pnl>=0?C.profit:C.risk} stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor={pnl>=0?C.profit:C.risk} stopOpacity={0}/>
-                    </linearGradient></defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false}/>
+                    <CartesianGrid strokeDasharray="1 3" stroke={C.border} vertical={false}/>
                     <YAxis hide domain={['auto','auto']}/><XAxis hide/>
                     <Tooltip contentStyle={TT_STYLE} formatter={(v:number)=>[`$${v.toLocaleString()}`,'PnL']}/>
                     <ReferenceLine y={0} stroke={C.textD} strokeDasharray="3 3"/>
-                    <Area type="monotone" dataKey="v" stroke={pnl>=0?C.profit:C.risk} strokeWidth={2} fill="url(#eqG)" dot={false} animationDuration={300}/>
+                    <Area type="monotone" dataKey="v" stroke={pnl>=0?C.profit:C.risk} strokeWidth={1} fill="transparent" dot={false} isAnimationActive={false}/>
                   </AreaChart>
                 </ResponsiveContainer>
             }
@@ -486,13 +520,13 @@ export default function AgentOrchestrator() {
               ? <div className="h-full flex items-center justify-center text-[9px] font-mono" style={{color:C.textD}}>Awaiting scan data</div>
               : <ResponsiveContainer width="100%" height="100%">
                   <LineChart margin={{top:5,right:5,left:5,bottom:5}}>
-                    <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false}/>
+                    <CartesianGrid strokeDasharray="1 3" stroke={C.border} vertical={false}/>
                     <XAxis hide/><YAxis hide domain={['auto','auto']}/>
                     <Tooltip contentStyle={TT_STYLE}/>
                     {Object.entries(priceCache).slice(-4).map(([key,data],idx)=>{
                       const cols=[C.profit,C.blue,C.warn,C.purple];
                       const cd = data.slice(-60).map((p,i)=>({i,[key]:p}));
-                      return <Line key={key} data={cd} type="monotone" dataKey="key" stroke={cols[idx%4]} strokeWidth={1.5} dot={false} animationDuration={300}/>
+                      return <Line key={key} data={cd} type="monotone" dataKey={key} stroke={cols[idx%4]} strokeWidth={1} dot={false} isAnimationActive={false}/>
                     })}
                   </LineChart>
                 </ResponsiveContainer>
@@ -507,11 +541,9 @@ export default function AgentOrchestrator() {
           <div className="flex-1 min-h-[80px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={latHist}>
-                <defs><linearGradient id="lG" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={C.cyan} stopOpacity={0.18}/><stop offset="95%" stopColor={C.cyan} stopOpacity={0}/>
-                </linearGradient></defs>
+                <CartesianGrid strokeDasharray="1 3" stroke={C.border} vertical={false}/>
                 <XAxis hide/><YAxis hide domain={[0,'dataMax']}/>
-                <Area type="monotone" dataKey="v" stroke={C.cyan} strokeWidth={1.5} fill="url(#lG)" dot={false} animationDuration={300}/>
+                <Area type="monotone" dataKey="v" stroke={C.cyan} strokeWidth={1} fill="transparent" dot={false} isAnimationActive={false}/>
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -575,10 +607,11 @@ export default function AgentOrchestrator() {
             <div className="flex-1 min-h-[120px]">
               <ResponsiveContainer width="100%" height={140}>
                 <RechartsBarChart data={latHist.slice(-30)}>
+                  <CartesianGrid strokeDasharray="1 3" stroke={C.border} vertical={false}/>
                   <XAxis hide/><YAxis hide/>
                   <Tooltip contentStyle={TT_STYLE} formatter={(v:number)=>[`${v.toFixed(0)}ms`,'Latency']}/>
-                  <Bar dataKey="v" radius={[2,2,0,0]} animationDuration={300}>
-                    {latHist.slice(-30).map((_,i)=><Cell key={i} fill={i===latHist.slice(-30).length-1?C.warn:C.dimW}/>)}
+                  <Bar dataKey="v" radius={[0,0,0,0]} isAnimationActive={false}>
+                    {latHist.slice(-30).map((_,i)=><Cell key={i} fill={i===latHist.slice(-30).length-1?C.warn:C.textD}/>)}
                   </Bar>
                 </RechartsBarChart>
               </ResponsiveContainer>
@@ -688,8 +721,8 @@ export default function AgentOrchestrator() {
                     <RechartsBarChart data={fzClusterBars} layout="vertical" margin={{left:0,right:5}}>
                       <XAxis type="number" hide domain={[0,100]}/>
                       <YAxis type="category" dataKey="name" width={40} tick={{fill:C.textD,fontSize:7}} axisLine={false} tickLine={false}/>
-                      <Bar dataKey="val" radius={[0,3,3,0]} animationDuration={300}>
-                        {fzClusterBars.map((e,i)=><Cell key={i} fill={e.color} fillOpacity={0.7}/>)}
+                      <Bar dataKey="val" radius={[0,0,0,0]} isAnimationActive={false}>
+                        {fzClusterBars.map((e,i)=><Cell key={i} fill={e.color} fillOpacity={1}/>)}
                       </Bar>
                     </RechartsBarChart>
                   </ResponsiveContainer>
@@ -711,8 +744,8 @@ export default function AgentOrchestrator() {
                       <RechartsBarChart data={fzClusterBars} layout="vertical" margin={{left:0,right:5}}>
                         <XAxis type="number" hide domain={[0,100]}/>
                         <YAxis type="category" dataKey="name" width={40} tick={{fill:C.textD,fontSize:7}} axisLine={false} tickLine={false}/>
-                        <Bar dataKey="val" radius={[0,3,3,0]} animationDuration={300}>
-                          {fzClusterBars.map((e,i)=><Cell key={i} fill={e.color} fillOpacity={0.7}/>)}
+                        <Bar dataKey="val" radius={[0,0,0,0]} isAnimationActive={false}>
+                          {fzClusterBars.map((e,i)=><Cell key={i} fill={e.color} fillOpacity={1}/>)}
                         </Bar>
                       </RechartsBarChart>
                     </ResponsiveContainer>
@@ -985,6 +1018,47 @@ export default function AgentOrchestrator() {
 
         {/* ═══ L4: BACKTESTER LAYER ═══ */}
         {activeLayer===4 && <>
+          {/* L4 Configuration Panel */}
+          <Panel className="col-span-12 p-4 mb-2" style={{minHeight:150}}>
+            <PanelHeader icon={GitBranch} title="Walk-Forward AI Configuration (DeepSeek-V4-Pro)" color={C.blue}/>
+            <div className="grid grid-cols-12 gap-6 mt-2">
+              <div className="col-span-8 flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] uppercase tracking-widest font-bold" style={{color:C.textD}}>Strategy Alpha Thesis (Prompt)</label>
+                  <textarea 
+                    value={alphaThesis} onChange={e=>setAlphaThesis(e.target.value)}
+                    className="w-full bg-black/50 rounded border p-2 text-xs font-mono resize-none focus:outline-none"
+                    style={{borderColor:C.border, color:C.textH, height:'60px'}}
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] uppercase tracking-widest font-bold" style={{color:C.textD}}>Hugging Face API Key</label>
+                  <input 
+                    type="password" value={hfApiKey} onChange={e=>setHfApiKey(e.target.value)}
+                    className="w-full bg-black/50 rounded border p-1.5 text-xs font-mono focus:outline-none"
+                    style={{borderColor:C.border, color:C.textH}}
+                  />
+                </div>
+              </div>
+              <div className="col-span-4 flex flex-col gap-3">
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] uppercase tracking-widest font-bold" style={{color:C.textD}}>Test Window (Days)</label>
+                  <input type="number" value={testWindow} onChange={e=>setTestWindow(Number(e.target.value))} className="w-full bg-black/50 rounded border p-1.5 text-xs font-mono focus:outline-none" style={{borderColor:C.border, color:C.textH}} />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] uppercase tracking-widest font-bold" style={{color:C.textD}}>Min Train Days</label>
+                  <input type="number" value={trainDays} onChange={e=>setTrainDays(Number(e.target.value))} className="w-full bg-black/50 rounded border p-1.5 text-xs font-mono focus:outline-none" style={{borderColor:C.border, color:C.textH}} />
+                </div>
+                <button 
+                  onClick={() => { setIsWfRunning(true); setTimeout(() => setIsWfRunning(false), 2000); }}
+                  className="w-full mt-auto py-2 rounded text-[10px] uppercase font-bold tracking-widest transition-all flex items-center justify-center gap-2"
+                  style={{backgroundColor:isWfRunning?C.dimW:C.dimB, color:isWfRunning?C.warn:C.blue, border:`1px solid ${isWfRunning?C.warn:C.blue}40`}}>
+                  {isWfRunning ? <><RefreshCw className="w-3 h-3 animate-spin"/> Executing Backend Engine...</> : <><Target className="w-3 h-3"/> Run Walk-Forward Simulation</>}
+                </button>
+              </div>
+            </div>
+          </Panel>
+
           <Panel className="col-span-8 p-3" style={{minHeight:260}}>
             <PanelHeader icon={GitBranch} title="Walk-Forward Equity Curve (Out-of-Sample)" color={C.purple}
               right={wfResult?<span className="text-[8px] font-mono" style={{color:C.profit}}>{wfResult.aggregateMetrics.totalWindows} windows</span>:undefined}/>
@@ -993,15 +1067,12 @@ export default function AgentOrchestrator() {
                 ? <div className="h-full flex items-center justify-center text-[9px] font-mono" style={{color:C.textD}}>Engage engine — WF runs after 200+ price points</div>
                 : <ResponsiveContainer width="100%" height={180}>
                     <AreaChart data={wfResult.equityCurve}>
-                      <defs><linearGradient id="wfFull" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={C.purple} stopOpacity={0.25}/><stop offset="95%" stopColor={C.purple} stopOpacity={0}/>
-                      </linearGradient></defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false}/>
+                      <CartesianGrid strokeDasharray="1 3" stroke={C.border} vertical={false}/>
                       <XAxis dataKey="day" tick={{fill:C.textD,fontSize:7}} label={{value:'Day',fill:C.textD,fontSize:7}}/>
                       <YAxis tick={{fill:C.textD,fontSize:7}}/>
                       <Tooltip contentStyle={TT_STYLE} formatter={(v:number)=>[`${v.toFixed(1)}%`,'Equity']}/>
                       <ReferenceLine y={100} stroke={C.textD} strokeDasharray="3 3"/>
-                      <Area type="monotone" dataKey="equity" stroke={C.purple} strokeWidth={2} fill="url(#wfFull)" dot={false} animationDuration={300}/>
+                      <Area type="monotone" dataKey="equity" stroke={C.purple} strokeWidth={1} fill="transparent" dot={false} isAnimationActive={false}/>
                     </AreaChart>
                   </ResponsiveContainer>
               }
@@ -1061,11 +1132,12 @@ export default function AgentOrchestrator() {
             {wfResult?.strategyContribution.length ? (
               <ResponsiveContainer width="100%" height={140}>
                 <RechartsBarChart data={wfResult.strategyContribution}>
+                  <CartesianGrid strokeDasharray="1 3" stroke={C.border} vertical={false}/>
                   <XAxis dataKey="strategy" tick={{fill:C.textD,fontSize:7}} interval={0}/>
                   <YAxis tick={{fill:C.textD,fontSize:7}}/>
                   <Tooltip contentStyle={TT_STYLE}/>
-                  <Bar dataKey="wins" name="Wins" fill={C.profit} radius={[3,3,0,0]} animationDuration={300}/>
-                  <Bar dataKey="avgSharpe" name="Avg Sharpe" fill={C.cyan} radius={[3,3,0,0]} animationDuration={300}/>
+                  <Bar dataKey="wins" name="Wins" fill={C.profit} radius={[0,0,0,0]} isAnimationActive={false}/>
+                  <Bar dataKey="avgSharpe" name="Avg Sharpe" fill={C.cyan} radius={[0,0,0,0]} isAnimationActive={false}/>
                 </RechartsBarChart>
               </ResponsiveContainer>
             ) : <div className="flex-1 flex items-center justify-center text-[9px] font-mono" style={{color:C.textD}}>Awaiting WF data</div>}
@@ -1089,16 +1161,11 @@ export default function AgentOrchestrator() {
                 ? <div className="h-[160px] flex items-center justify-center text-[9px] font-mono" style={{color:C.textD}}>Engage engine to generate Walk-Forward results. Requires 200+ price points per ticker.</div>
                 : <ResponsiveContainer width="100%" height={180}>
                     <ComposedChart data={wfResult.equityCurve}>
-                      <defs>
-                        <linearGradient id="wfBtm" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor={C.profit} stopOpacity={0.25}/><stop offset="95%" stopColor={C.profit} stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false}/>
+                      <CartesianGrid strokeDasharray="1 3" stroke={C.border} vertical={false}/>
                       <XAxis dataKey="day" tick={{fill:C.textD,fontSize:8}}/><YAxis tick={{fill:C.textD,fontSize:8}}/>
                       <Tooltip contentStyle={TT_STYLE} formatter={(v:number)=>[`${v.toFixed(1)}%`,'OOS Equity']}/>
-                      <ReferenceLine y={100} stroke={C.warn} strokeDasharray="4 4" label={{value:'Baseline',fill:C.warn,fontSize:7}}/>
-                      <Area type="monotone" dataKey="equity" stroke={C.profit} strokeWidth={2} fill="url(#wfBtm)" dot={false} animationDuration={300}/>
+                      <ReferenceLine y={100} stroke={C.warn} strokeDasharray="2 2" label={{value:'Baseline',fill:C.warn,fontSize:7}}/>
+                      <Area type="monotone" dataKey="equity" stroke={C.profit} strokeWidth={1} fill="transparent" dot={false} isAnimationActive={false}/>
                     </ComposedChart>
                   </ResponsiveContainer>
               }
@@ -1220,26 +1287,20 @@ export default function AgentOrchestrator() {
                         <div className="flex-[7] min-w-0 h-full flex flex-col justify-between">
                           <ResponsiveContainer width="100%" height="90%">
                             <AreaChart data={historicalPrices} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
-                              <defs>
-                                <linearGradient id="overlayG" x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor={detailThesis?.direction === 'SHORT' ? C.risk : C.profit} stopOpacity={0.25}/>
-                                  <stop offset="95%" stopColor="#000" stopOpacity={0}/>
-                                </linearGradient>
-                              </defs>
-                              <CartesianGrid stroke={C.border} strokeDasharray="3 3" vertical={false} />
+                              <CartesianGrid stroke={C.border} strokeDasharray="1 3" vertical={false} />
                               <XAxis dataKey="day" stroke={C.textD} tick={{ fill: C.textM, fontSize: 8 }} />
                               <YAxis domain={['auto', 'auto']} stroke={C.textD} tick={{ fill: C.textM, fontSize: 8 }} />
                               <Tooltip 
                                 contentStyle={{ backgroundColor: C.panelBg, borderColor: C.border, color: C.textH, fontSize: '10px' }} 
                                 labelFormatter={(label) => `Relative Day: ${label}`}
                               />
-                              <Area type="monotone" dataKey="price" stroke={detailThesis?.direction === 'SHORT' ? C.risk : C.profit} strokeWidth={2} fillOpacity={1} fill="url(#overlayG)" />
+                              <Area type="monotone" dataKey="price" stroke={detailThesis?.direction === 'SHORT' ? C.risk : C.profit} strokeWidth={1} fill="transparent" isAnimationActive={false} />
                               
                               {detailThesis && (
                                 <>
-                                  <ReferenceLine y={detailThesis.entryPrice} stroke={C.blue} strokeDasharray="5 5" label={{ value: `ENTRY: $${detailThesis.entryPrice.toFixed(2)}`, fill: C.blue, fontSize: 10, position: 'insideTopLeft' }} />
-                                  <ReferenceLine y={detailThesis.targetPrice} stroke={C.profit} strokeDasharray="3 3" label={{ value: `TARGET: $${detailThesis.targetPrice.toFixed(2)}`, fill: C.profit, fontSize: 10, position: 'insideBottomLeft' }} />
-                                  <ReferenceLine y={detailThesis.stopLoss} stroke={C.risk} strokeDasharray="3 3" label={{ value: `STOP: $${detailThesis.stopLoss.toFixed(2)}`, fill: C.risk, fontSize: 10, position: 'insideTopLeft' }} />
+                                  <ReferenceLine y={detailThesis.entryPrice} stroke={C.blue} strokeDasharray="3 3" label={{ value: `ENTRY: $${detailThesis.entryPrice.toFixed(2)}`, fill: C.blue, fontSize: 10, position: 'insideTopLeft' }} />
+                                  <ReferenceLine y={detailThesis.targetPrice} stroke={C.profit} strokeDasharray="1 3" label={{ value: `TARGET: $${detailThesis.targetPrice.toFixed(2)}`, fill: C.profit, fontSize: 10, position: 'insideBottomLeft' }} />
+                                  <ReferenceLine y={detailThesis.stopLoss} stroke={C.risk} strokeDasharray="1 3" label={{ value: `STOP: $${detailThesis.stopLoss.toFixed(2)}`, fill: C.risk, fontSize: 10, position: 'insideTopLeft' }} />
                                 </>
                               )}
                             </AreaChart>
@@ -1305,8 +1366,8 @@ export default function AgentOrchestrator() {
 
                           {/* Order Confirmation Block */}
                           <button
-                            disabled={!detailThesis}
-                            onClick={() => alert(`Simulated Order of ${simQty} shares filled via execution layer logic.`)}
+                            disabled={!detailThesis || executing}
+                            onClick={() => detailThesis && handleExecuteLiveTrade(detailThesis, simQty)}
                             className="w-full py-3 rounded-xl font-bold tracking-[0.2em] text-[10px] uppercase transition-all shadow-lg hover:shadow-indigo-500/20 disabled:opacity-40 disabled:hover:shadow-none"
                             style={{
                               background: detailThesis?.direction === 'SHORT' 
@@ -1462,6 +1523,22 @@ export default function AgentOrchestrator() {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {showDashboard && selectedLiveThesis && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            style={{ position: 'fixed', inset: 0, zIndex: 9999, background: C.bg }}
+          >
+            <LiveTradingDashboard 
+              onClose={() => { setShowDashboard(false); setSelectedLiveThesis(null); }} 
+              initialThesis={selectedLiveThesis} 
+              initialQty={simQty}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

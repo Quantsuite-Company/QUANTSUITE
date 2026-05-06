@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Search, TrendingUp, TrendingDown, Activity, Target, Zap, 
   Download, Crosshair, BarChart3, Clock, AlertTriangle 
@@ -114,11 +115,14 @@ function generateReport(ticker: string, data: any[]): StockReport {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
+    // Basic heuristic since ticker isn't explicitly passed to tooltip easily without prop drilling
+    // We can just omit the currency symbol here or pass it if possible.
+    // Given the structure, we can just use the value without the hardcoded $
     return (
       <div className="bg-black/90 border border-white/20 p-3 rounded shadow-xl font-mono backdrop-blur-md">
         <p className="text-white/60 text-xs mb-2">{label}</p>
         <p className="text-white font-bold text-lg">
-          ${payload[0].value.toFixed(2)}
+          {payload[0].value.toFixed(2)}
         </p>
         {payload[1] && (
           <p className="text-white/60 text-xs mt-1">
@@ -136,6 +140,8 @@ export default function StockReportPage() {
   const [inputTicker, setInputTicker] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [report, setReport] = useState<StockReport | null>(null);
+
+  const currencySymbol = report?.ticker.endsWith('.NS') || report?.ticker.endsWith('.BO') ? '₹' : '$';
 
   const handleAnalyze = async (symbol: string) => {
     const target = symbol.trim().toUpperCase();
@@ -168,10 +174,13 @@ export default function StockReportPage() {
     }
   };
 
+  const [searchParams] = useSearchParams();
+
   // Load default on mount
   useEffect(() => {
-    handleAnalyze('NVDA');
-  }, []);
+    const t = searchParams.get('ticker') || 'NVDA';
+    handleAnalyze(t);
+  }, [searchParams]);
 
   return (
     <div className="relative h-screen w-full bg-[#09090b] text-white overflow-hidden font-mono flex flex-col">
@@ -181,7 +190,7 @@ export default function StockReportPage() {
           <div className="flex items-center gap-3 border-r border-white/10 pr-6">
             <BarChart3 className="w-5 h-5 text-emerald-500" />
             <div className="text-[11px] font-bold tracking-widest leading-tight uppercase">
-              Sys_Core.Asset_Report <br/>
+              Asset Report <br/>
               <span className="text-white/40 font-light">Institutional Grade</span>
             </div>
           </div>
@@ -245,7 +254,7 @@ export default function StockReportPage() {
                   </span>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-3xl font-light">${report.currentPrice.toFixed(2)}</p>
+                  <p className="text-3xl font-light">{currencySymbol}{report.currentPrice.toFixed(2)}</p>
                   <p className={`text-sm tracking-wider ${report.change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                     {report.change >= 0 ? '+' : ''}{report.change.toFixed(2)} ({report.changePercent.toFixed(2)}%)
                   </p>
@@ -255,8 +264,8 @@ export default function StockReportPage() {
               {/* Data Grid */}
               <div className="grid grid-cols-2 gap-px bg-white/5 border border-white/5">
                 {[
-                  { label: "52W HIGH", value: `$${report.high52w.toFixed(2)}` },
-                  { label: "52W LOW", value: `$${report.low52w.toFixed(2)}` },
+                  { label: "52W HIGH", value: `${currencySymbol}${report.high52w.toFixed(2)}` },
+                  { label: "52W LOW", value: `${currencySymbol}${report.low52w.toFixed(2)}` },
                   { label: "AVG VOL", value: `${(report.avgVolume / 1e6).toFixed(2)}M` },
                   { label: "VOLATILITY", value: `${report.volatility.toFixed(1)}%` },
                   { label: "RSI(14)", value: report.rsi14.toFixed(1), color: report.rsi14 > 70 ? 'text-rose-400' : report.rsi14 < 30 ? 'text-emerald-400' : 'text-white' },
@@ -284,7 +293,7 @@ export default function StockReportPage() {
                     <div key={i} className="flex items-center justify-between text-sm py-1">
                       <span className="text-white/60">{sma.label}</span>
                       <div className="flex items-center gap-3">
-                        <span>${sma.val.toFixed(2)}</span>
+                        <span>{currencySymbol}{sma.val.toFixed(2)}</span>
                         <div className={`w-1.5 h-1.5 rounded-full ${isAbove ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                       </div>
                     </div>
@@ -301,13 +310,13 @@ export default function StockReportPage() {
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-[10px] text-emerald-500/70 tracking-widest">RESISTANCE</span>
                   </div>
-                  <div className="text-lg text-emerald-400">${report.resistance.toFixed(2)}</div>
+                  <div className="text-lg text-emerald-400">{currencySymbol}{report.resistance.toFixed(2)}</div>
                 </div>
                 <div className="bg-rose-500/5 border border-rose-500/20 p-3 rounded">
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-[10px] text-rose-500/70 tracking-widest">SUPPORT</span>
                   </div>
-                  <div className="text-lg text-rose-400">${report.support.toFixed(2)}</div>
+                  <div className="text-lg text-rose-400">{currencySymbol}{report.support.toFixed(2)}</div>
                 </div>
               </div>
 
@@ -361,7 +370,7 @@ export default function StockReportPage() {
                       domain={['auto', 'auto']} 
                       stroke="#ffffff40" 
                       fontSize={11}
-                      tickFormatter={(val) => `$${val}`}
+                      tickFormatter={(val) => `${currencySymbol}${val}`}
                       orientation="right"
                     />
                     <Tooltip content={<CustomTooltip />} />

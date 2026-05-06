@@ -35,6 +35,7 @@ const sidebarSections = [
     label: "AI-Native Hedge Fund",
     items: [
       { title: "Agent Orchestrator", url: "/agent-orchestrator", icon: BrainCircuit },
+      { title: "Live Trading", url: "/live-trading", icon: Activity },
       { title: "Portfolio Terminal", url: "/portfolio-terminal", icon: Briefcase },
     ],
   },
@@ -53,7 +54,6 @@ const sidebarSections = [
       { title: "Portfolio Builder", url: "/portfolio-builder", icon: Diagram },
       { title: "Portfolio Optimizer", url: "/portfolio-optimizer", icon: Calculator },
       { title: "Alpha Signals", url: "/alpha-signals", icon: TrendUp },
-      { title: "Walk-Forward Test", url: "/walk-forward", icon: ChartSquare },
       { title: "Backtest History", url: "/backtest-history", icon: DocumentText },
       { title: "Risk Analysis", url: "/risk-analysis", icon: Warning2 },
       { title: "CSV Visualizer", url: "/csv-visualizer", icon: DocumentText },

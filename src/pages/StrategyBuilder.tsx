@@ -233,18 +233,19 @@ export default function StrategyBuilder() {
       
       const seed = Math.floor(Math.random() * 100000);
       const hfResponse = await fetch(
-        `https://text.pollinations.ai/v1/chat/completions`,
+        `https://gen.pollinations.ai/v1/chat/completions`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_POLLINATIONS_API_KEY}`,
           },
           body: JSON.stringify({
             messages: [
               { role: "system", content: SYSTEM_PROMPT },
               { role: "user", content: fullPrompt }
             ],
-            model: "openai-fast",
+            model: "perplexity-reasoning",
             temperature: 0.7,
             response_format: { type: "json_object" }
           }),

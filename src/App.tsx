@@ -113,6 +113,7 @@ const App: React.FC = () => {
                     <Layout><AgentOrchestrator /></Layout>
                   </ProtectedRoute>
                 } />
+
                 
                 {/* Protected Routes - Portfolio Management */}
                 <Route path="/portfolios" element={

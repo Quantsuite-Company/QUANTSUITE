@@ -127,12 +127,12 @@ export default function ScreenerPage() {
       {/* TOP DECK */}
       <div className="flex-none bg-black/80 border-b border-indigo-500/20 px-6 py-3 z-20 backdrop-blur-md flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-1.5 bg-indigo-500/10 rounded border border-indigo-500/30">
-            <LayoutGrid className="w-4 h-4 text-indigo-400" />
-          </div>
-          <div className="text-[11px] font-bold tracking-widest leading-tight uppercase">
-            Sys_Core.Screener <br/>
-            <span className="text-white/40 font-light">Global Asset Filter</span>
+          <div className="flex items-center gap-3 border-r border-white/10 pr-6">
+            <Target className="w-5 h-5 text-emerald-500" />
+            <div className="text-[11px] font-bold tracking-widest leading-tight uppercase">
+              Quantitative Screener <br/>
+              <span className="text-white/40 font-light">Factor Isolation Engine</span>
+            </div>
           </div>
         </div>
         

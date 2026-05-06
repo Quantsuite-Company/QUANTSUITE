@@ -265,10 +265,13 @@ The Risk Manager will enforce drawdown prevention via Kelly Criterion sizing.`;
     try {
       const seed = Math.floor(Math.random() * 100000);
       const hfResponse = await fetch(
-        `https://text.pollinations.ai/v1/chat/completions`,
+        `https://gen.pollinations.ai/v1/chat/completions`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_POLLINATIONS_API_KEY}`,
+          },
           body: JSON.stringify({
             messages: [
               { 
@@ -277,26 +280,10 @@ The Risk Manager will enforce drawdown prevention via Kelly Criterion sizing.`;
               },
               {
                 role: "user",
-                content: `Target: ${symbol}
-Consensus View: ${voteStr} ${isBull ? 'LONG' : 'SHORT'}.
-Agent Silo Votes:
-${agentVotes.map(v => `- ${v.agent}: ${v.direction} (${v.conviction.toFixed(1)}% conviction). Reason: ${v.reason}`).join('\n')}
-
-100-Node Matrix Highlights:
-- Sharpe Ratio: ${math100.base.sharpe.toFixed(3)}
-- Sortino: ${math100.base.sortino.toFixed(3)}
-- Beta: ${math100.base.beta.toFixed(3)}
-- Jensen's Alpha: ${(math100.base.jensensAlpha * 100).toFixed(3)}%
-- Value-at-Risk (95%): ${(math100.risk.var95 * 100).toFixed(2)}% daily
-- Expected Shortfall (CVaR): ${(math100.risk.cvar95 * 100).toFixed(2)}%
-- Max Drawdown: ${(math100.risk.maxDrawdown * 100).toFixed(1)}%
-- Hurst Exponent: ${math100.statistical.hurstExponent.toFixed(3)}
-- Delta: ${math100.greeks.delta.toFixed(3)} | Gamma: ${math100.greeks.gamma.toFixed(4)}
-
-Write the CIO Executive Synthesis now. Be brutal, data-dense, and highly aggressive.`
+                content: `Target: ${symbol}\nConsensus View: ${voteStr} ${isBull ? 'LONG' : 'SHORT'}.\nAgent Silo Votes:\n${agentVotes.map(v => `- ${v.agent}: ${v.direction} (${v.conviction.toFixed(1)}% conviction). Reason: ${v.reason}`).join('\n')}\n\n100-Node Matrix Highlights:\n- Sharpe Ratio: ${math100.base.sharpe.toFixed(3)}\n- Sortino: ${math100.base.sortino.toFixed(3)}\n- Beta: ${math100.base.beta.toFixed(3)}\n- Jensen's Alpha: ${(math100.base.jensensAlpha * 100).toFixed(3)}%\n- Value-at-Risk (95%): ${(math100.risk.var95 * 100).toFixed(2)}% daily\n- Expected Shortfall (CVaR): ${(math100.risk.cvar95 * 100).toFixed(2)}%\n- Max Drawdown: ${(math100.risk.maxDrawdown * 100).toFixed(1)}%\n- Hurst Exponent: ${math100.statistical.hurstExponent.toFixed(3)}\n- Delta: ${math100.greeks.delta.toFixed(3)} | Gamma: ${math100.greeks.gamma.toFixed(4)}\n\nWrite the CIO Executive Synthesis now. Be brutal, data-dense, and highly aggressive.`
               }
             ],
-            model: "openai-fast",
+            model: "perplexity-reasoning",
             temperature: 0.7,
           }),
         }

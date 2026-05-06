@@ -34,6 +34,9 @@ async function fetchYahooFinanceData(symbol: string, period: string = '1y'): Pro
     '6mo': { range: '6mo', interval: '1d' },
     '1y': { range: '1y', interval: '1d' },
     '2y': { range: '2y', interval: '1d' },
+    '5y': { range: '5y', interval: '1d' },
+    '10y': { range: '10y', interval: '1d' },
+    'max': { range: 'max', interval: '1d' },
   };
 
   const { range, interval } = periodMap[period] || periodMap['1y'];
@@ -41,20 +44,39 @@ async function fetchYahooFinanceData(symbol: string, period: string = '1y'): Pro
   console.log(`Fetching data for ${symbol} with range=${range}, interval=${interval}`);
 
   try {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`;
+    const urls = [
+      `https://query2.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`,
+      `https://corsproxy.io/?url=${encodeURIComponent(`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?range=${range}&interval=${interval}`)}`
+    ];
     
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0',
-      },
-    });
+    let data = null;
+    let success = false;
 
-    if (!response.ok) {
-      console.error(`Yahoo Finance API error for ${symbol}: ${response.status}`);
-      return [];
+    for (const url of urls) {
+      if (success) break;
+      try {
+        const response = await fetch(url, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': '*/*',
+          },
+        });
+        
+        if (response.ok) {
+          data = await response.json();
+          success = true;
+          break;
+        }
+      } catch (e) {
+        // Continue to next URL
+      }
     }
 
-    const data = await response.json();
+    if (!success || !data) {
+      console.error(`All Yahoo Finance mirrors failed for ${symbol}`);
+      return [];
+    }
     
     if (!data?.chart?.result?.[0]) {
       console.error(`No data returned for ${symbol}`);
