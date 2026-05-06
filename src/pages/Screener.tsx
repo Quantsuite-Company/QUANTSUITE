@@ -1,22 +1,16 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Search, TrendingUp, DollarSign, Activity, Zap, Download, Sparkles } from 'lucide-react';
-import { Slider } from '@/components/ui/slider';
+import { toast } from 'sonner';
+import { 
+  TrendingUp, DollarSign, Activity, Zap, Download, 
+  Search, Filter, ArrowUpRight, ArrowDownRight, LayoutGrid, X, RotateCcw
+} from 'lucide-react';
 
 interface ScreenerResult {
   symbol: string;
   name: string;
   price: number;
-  change: number;
   changePercent: number;
   volume: number;
   marketCap?: number;
@@ -33,124 +27,73 @@ interface ScreenerFilters {
   changePercentMax?: number;
   rsiMin?: number;
   rsiMax?: number;
-  macdSignal?: 'bullish' | 'bearish' | 'any';
   sector?: string;
 }
 
-const Screener = () => {
-  const { toast } = useToast();
+const presetScreens = [
+  { name: 'MOMENTUM BURST', desc: 'RSI > 60 | VOL > 1M | CHG > 2%', filters: { rsiMin: 60, volumeMin: 1000000, changePercentMin: 2 } },
+  { name: 'OVERSOLD VALUE', desc: 'RSI < 30 | CHG < -2%', filters: { rsiMax: 30, changePercentMax: -2 } },
+  { name: 'HIGH VOLUME', desc: 'VOL > 5M', filters: { volumeMin: 5000000 } },
+  { name: 'TECH LEADERS', desc: 'TECH | VOL > 1M | CHG > 1%', filters: { sector: 'Technology', volumeMin: 1000000, changePercentMin: 1 } }
+];
+
+export default function ScreenerPage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ScreenerResult[]>([]);
-  const [aiQuery, setAiQuery] = useState('');
-  const [filters, setFilters] = useState<ScreenerFilters>({});
+  
+  // draftFilters are what the user is currently tweaking in the left panel.
+  const [draftFilters, setDraftFilters] = useState<ScreenerFilters>({});
+  
+  // activeFilters are the ones currently applied to the results grid.
+  const [activeFilters, setActiveFilters] = useState<ScreenerFilters | null>(null);
+
   const [sortBy, setSortBy] = useState<keyof ScreenerResult>('changePercent');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [hasRun, setHasRun] = useState(false);
 
-  const presetScreens = [
-    {
-      name: 'Momentum Breakouts',
-      description: 'RSI > 60, Volume surge',
-      icon: <TrendingUp className="h-4 w-4" />,
-      filters: { rsiMin: 60, volumeMin: 1000000, changePercentMin: 2 }
-    },
-    {
-      name: 'Oversold Value',
-      description: 'RSI < 30, Undervalued',
-      icon: <DollarSign className="h-4 w-4" />,
-      filters: { rsiMax: 30, changePercentMax: -2 }
-    },
-    {
-      name: 'High Volume',
-      description: 'Volume > 2M',
-      icon: <Activity className="h-4 w-4" />,
-      filters: { volumeMin: 2000000 }
-    },
-    {
-      name: 'Strong Gainers',
-      description: 'Change > 5%',
-      icon: <Zap className="h-4 w-4" />,
-      filters: { changePercentMin: 5 }
-    }
-  ];
-
-  const runScreen = async (customFilters?: ScreenerFilters) => {
+  const runScreen = async () => {
     setLoading(true);
-    const screenFilters = customFilters || filters;
     
+    // Commit drafts to active
+    setActiveFilters({...draftFilters});
+
     try {
       const { data, error } = await supabase.functions.invoke('run-screener', {
-        body: { filters: screenFilters }
+        body: { filters: draftFilters }
       });
 
       if (error) throw error;
 
       setResults(data.results || []);
-      toast({
-        title: 'Screen Complete',
-        description: `Found ${data.results?.length || 0} matching stocks`,
-      });
+      setHasRun(true);
+      toast.success(`Screen executed. ${data.results?.length || 0} assets found.`);
     } catch (error) {
       console.error('Screener error:', error);
-      toast({
-        title: 'Screener Error',
-        description: 'Failed to run screen. Please try again.',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const runAIScreen = async () => {
-    if (!aiQuery.trim()) {
-      toast({
-        title: 'Empty Query',
-        description: 'Please enter a screening request',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('ai-screener', {
-        body: { query: aiQuery }
-      });
-
-      if (error) throw error;
-
-      if (data.filters) {
-        setFilters(data.filters);
-        await runScreen(data.filters);
-        
-        toast({
-          title: 'AI Screen Complete',
-          description: data.explanation || 'Filters applied successfully',
-        });
-      }
-    } catch (error) {
-      console.error('AI screener error:', error);
-      toast({
-        title: 'AI Screener Error',
-        description: 'Failed to parse query. Please try again.',
-        variant: 'destructive',
-      });
+      toast.error('Failed to execute screening protocols.');
     } finally {
       setLoading(false);
     }
   };
 
   const applyPreset = (preset: typeof presetScreens[0]) => {
-    setFilters(preset.filters);
-    runScreen(preset.filters);
+    // Only load into draft, do not run automatically as requested
+    setDraftFilters({...preset.filters});
+    toast.info(`Preset Loaded: ${preset.name}. Click Run Screen to execute.`);
+  };
+
+  const resetFilters = () => {
+    setDraftFilters({});
+    setActiveFilters(null);
+    setResults([]);
+    setHasRun(false);
+    toast.info("Filters cleared and screener reset.");
   };
 
   const exportResults = () => {
     const csv = [
-      ['Symbol', 'Name', 'Price', 'Change %', 'Volume', 'RSI', 'Sector'].join(','),
+      ['Symbol', 'Price', 'Change %', 'Volume', 'RSI', 'Sector'].join(','),
       ...results.map(r => [
         r.symbol,
-        r.name,
         r.price,
         r.changePercent.toFixed(2),
         r.volume,
@@ -163,7 +106,7 @@ const Screener = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `screener-results-${Date.now()}.csv`;
+    a.download = `screener-export-${Date.now()}.csv`;
     a.click();
   };
 
@@ -173,350 +116,261 @@ const Screener = () => {
     return sortOrder === 'asc' ? (aVal > bVal ? 1 : -1) : (aVal < bVal ? 1 : -1);
   });
 
+  const getActiveFilterCount = () => {
+    if (!activeFilters) return 0;
+    return Object.keys(activeFilters).filter(k => activeFilters[k as keyof ScreenerFilters] !== undefined).length;
+  };
+
   return (
-    <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-          className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
-        >
-          <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              Stock Screener
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              AI-powered stock screening with 20+ technical indicators
-            </p>
+    <div className="relative h-screen w-full bg-[#09090b] text-white overflow-hidden font-mono flex flex-col selection:bg-indigo-500/30">
+      
+      {/* TOP DECK */}
+      <div className="flex-none bg-black/80 border-b border-indigo-500/20 px-6 py-3 z-20 backdrop-blur-md flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 border-r border-white/10 pr-6">
+            <Target className="w-5 h-5 text-emerald-500" />
+            <div className="text-[11px] font-bold tracking-widest leading-tight uppercase">
+              Quantitative Screener <br/>
+              <span className="text-white/40 font-light">Factor Isolation Engine</span>
+            </div>
           </div>
+        </div>
+        
+        <div className="flex gap-3">
           {results.length > 0 && (
-            <Button onClick={exportResults} variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Export CSV
-            </Button>
-          )}
-        </motion.div>
-
-        {/* AI Natural Language Screener */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1, duration: 0.4 }}
-        >
-          <Card className="bg-card/40 backdrop-blur-xl border-border/30">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-foreground">
-                <Sparkles className="h-5 w-5 text-primary" />
-                AI-Powered Screening
-              </CardTitle>
-              <CardDescription>
-                Describe what you're looking for in natural language
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="e.g., 'Find tech stocks with RSI below 30 and above their 200-day MA'"
-                  value={aiQuery}
-                  onChange={(e) => setAiQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && runAIScreen()}
-                  className="flex-1"
-                />
-                <Button onClick={runAIScreen} disabled={loading}>
-                  {loading ? 'Analyzing...' : 'Screen'}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Try: "momentum stocks", "oversold value stocks", "high volume gainers"
-              </p>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <Tabs defaultValue="filters" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="filters">Custom Filters</TabsTrigger>
-            <TabsTrigger value="presets">Preset Screens</TabsTrigger>
-          </TabsList>
-
-          {/* Custom Filters Tab */}
-          <TabsContent value="filters">
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
+            <button 
+              onClick={exportResults}
+              className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs transition-colors tracking-widest uppercase"
             >
-              <Card className="bg-card/40 backdrop-blur-xl border-border/30">
-                <CardHeader>
-                  <CardTitle className="text-foreground">Filter Builder</CardTitle>
-                  <CardDescription>Customize your screening criteria</CardDescription>
-                </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {/* Price Range */}
-                  <div className="space-y-2">
-                    <Label>Price Range</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Min"
-                        value={filters.priceMin || ''}
-                        onChange={(e) => setFilters({ ...filters, priceMin: parseFloat(e.target.value) })}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Max"
-                        value={filters.priceMax || ''}
-                        onChange={(e) => setFilters({ ...filters, priceMax: parseFloat(e.target.value) })}
-                      />
-                    </div>
-                  </div>
+              <Download className="w-3 h-3" /> Data Export
+            </button>
+          )}
+          <button 
+            onClick={resetFilters}
+            className="flex items-center gap-2 px-4 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded text-xs transition-colors tracking-widest uppercase"
+          >
+            <RotateCcw className="w-3 h-3" /> RESET
+          </button>
+          <button 
+            onClick={() => runScreen()}
+            disabled={loading}
+            className="flex items-center gap-2 px-6 py-1.5 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 text-indigo-400 rounded text-xs transition-colors tracking-widest uppercase"
+          >
+            {loading ? <Zap className="w-3 h-3 animate-pulse" /> : <Search className="w-3 h-3" />}
+            {loading ? 'EXECUTING...' : 'RUN SCREEN'}
+          </button>
+        </div>
+      </div>
 
-                  {/* Volume */}
-                  <div className="space-y-2">
-                    <Label>Minimum Volume</Label>
-                    <Input
-                      type="number"
-                      placeholder="e.g., 1000000"
-                      value={filters.volumeMin || ''}
-                      onChange={(e) => setFilters({ ...filters, volumeMin: parseFloat(e.target.value) })}
-                    />
-                  </div>
-
-                  {/* Change Percent */}
-                  <div className="space-y-2">
-                    <Label>Change % Range</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Min"
-                        value={filters.changePercentMin || ''}
-                        onChange={(e) => setFilters({ ...filters, changePercentMin: parseFloat(e.target.value) })}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Max"
-                        value={filters.changePercentMax || ''}
-                        onChange={(e) => setFilters({ ...filters, changePercentMax: parseFloat(e.target.value) })}
-                      />
-                    </div>
-                  </div>
-
-                  {/* RSI Range */}
-                  <div className="space-y-2">
-                    <Label>RSI Range (0-100)</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="number"
-                        placeholder="Min"
-                        min={0}
-                        max={100}
-                        value={filters.rsiMin || ''}
-                        onChange={(e) => setFilters({ ...filters, rsiMin: parseFloat(e.target.value) })}
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Max"
-                        min={0}
-                        max={100}
-                        value={filters.rsiMax || ''}
-                        onChange={(e) => setFilters({ ...filters, rsiMax: parseFloat(e.target.value) })}
-                      />
-                    </div>
-                  </div>
-
-                  {/* MACD Signal */}
-                  <div className="space-y-2">
-                    <Label>MACD Signal</Label>
-                    <Select
-                      value={filters.macdSignal || 'any'}
-                      onValueChange={(value: 'bullish' | 'bearish' | 'any') =>
-                        setFilters({ ...filters, macdSignal: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="any">Any</SelectItem>
-                        <SelectItem value="bullish">Bullish</SelectItem>
-                        <SelectItem value="bearish">Bearish</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Sector */}
-                  <div className="space-y-2">
-                    <Label>Sector</Label>
-                    <Select
-                      value={filters.sector || 'any'}
-                      onValueChange={(value) => setFilters({ ...filters, sector: value === 'any' ? undefined : value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="any">Any Sector</SelectItem>
-                        <SelectItem value="Technology">Technology</SelectItem>
-                        <SelectItem value="Finance">Finance</SelectItem>
-                        <SelectItem value="Healthcare">Healthcare</SelectItem>
-                        <SelectItem value="Energy">Energy</SelectItem>
-                        <SelectItem value="Consumer">Consumer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <Button onClick={() => runScreen()} disabled={loading} className="w-full">
-                  <Search className="h-4 w-4 mr-2" />
-                  {loading ? 'Running Screen...' : 'Run Custom Screen'}
-                </Button>
-              </CardContent>
-            </Card>
-          </motion.div>
-          </TabsContent>
-
-          {/* Preset Screens Tab */}
-          <TabsContent value="presets">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {presetScreens.map((preset, index) => (
-                <motion.div
+      <div className="flex-1 flex overflow-hidden">
+        {/* LEFT PANEL: FILTERS */}
+        <div className="w-[320px] bg-black/40 border-r border-white/5 overflow-y-auto flex flex-col hide-scrollbar p-5 space-y-8">
+          
+          {/* Presets */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <div className="flex items-center gap-2 text-[10px] text-white/40 tracking-widest uppercase">
+                <Zap className="w-3 h-3" /> Tactical Presets
+              </div>
+            </div>
+            <div className="grid gap-2">
+              {presetScreens.map((preset) => (
+                <div 
                   key={preset.name}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  whileHover={{ scale: 1.02 }}
-                  transition={{ delay: index * 0.05, duration: 0.3 }}
-                >
-                <Card
-                  className="cursor-pointer bg-card/40 backdrop-blur-xl border-border/30 hover:border-border/60 transition-all"
                   onClick={() => applyPreset(preset)}
+                  className="cursor-pointer bg-white/5 hover:bg-indigo-500/10 border border-white/5 hover:border-indigo-500/30 p-3 flex flex-col gap-1 transition-all group"
                 >
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-foreground">
-                      {preset.icon}
-                      {preset.name}
-                    </CardTitle>
-                    <CardDescription>{preset.description}</CardDescription>
-                  </CardHeader>
-                </Card>
-              </motion.div>
+                  <span className="text-xs font-bold text-white group-hover:text-indigo-400">{preset.name}</span>
+                  <span className="text-[10px] text-white/40">{preset.desc}</span>
+                </div>
               ))}
             </div>
-          </TabsContent>
-        </Tabs>
+          </div>
 
-        {/* Results Table */}
-        {results.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.4 }}
-          >
-            <Card className="bg-card/40 backdrop-blur-xl border-border/30">
-              <CardHeader>
-                <CardTitle className="text-foreground">Results ({results.length} stocks)</CardTitle>
-                <CardDescription>
-                  <div className="flex items-center gap-4 mt-2">
-                    <Label>Sort by:</Label>
-                    <Select value={sortBy} onValueChange={(val) => setSortBy(val as keyof ScreenerResult)}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="changePercent">Change %</SelectItem>
-                        <SelectItem value="volume">Volume</SelectItem>
-                        <SelectItem value="price">Price</SelectItem>
-                        <SelectItem value="rsi">RSI</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                    >
-                      {sortOrder === 'asc' ? '↑' : '↓'}
-                    </Button>
-                  </div>
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border/30">
-                        <th className="text-left p-2 text-foreground">Symbol</th>
-                        <th className="text-left p-2 text-foreground">Name</th>
-                        <th className="text-right p-2 text-foreground">Price</th>
-                        <th className="text-right p-2 text-foreground">Change %</th>
-                        <th className="text-right p-2 text-foreground">Volume</th>
-                        <th className="text-right p-2 text-foreground">RSI</th>
-                        <th className="text-left p-2 text-foreground">Sector</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedResults.map((result) => (
-                        <tr key={result.symbol} className="border-b border-border/20 hover:bg-card/60 transition-colors">
-                          <td className="p-2 font-semibold text-foreground">{result.symbol}</td>
-                          <td className="p-2 text-sm text-muted-foreground">{result.name}</td>
-                          <td className="p-2 text-right text-foreground">${result.price.toFixed(2)}</td>
-                          <td className="p-2 text-right">
-                            <Badge variant={result.changePercent >= 0 ? 'default' : 'destructive'}>
-                              {result.changePercent >= 0 ? '+' : ''}
-                              {result.changePercent.toFixed(2)}%
-                            </Badge>
-                          </td>
-                          <td className="p-2 text-right text-sm text-foreground">
-                            {(result.volume / 1000000).toFixed(2)}M
-                          </td>
-                          <td className="p-2 text-right">
-                            {result.rsi ? (
-                              <Badge
-                                variant={result.rsi < 30 ? 'destructive' : result.rsi > 70 ? 'default' : 'outline'}
-                              >
-                                {result.rsi.toFixed(1)}
-                              </Badge>
-                            ) : (
-                              'N/A'
-                            )}
-                          </td>
-                          <td className="p-2 text-sm text-foreground">{result.sector || 'N/A'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
-
-        {results.length === 0 && !loading && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2, duration: 0.4 }}
-          >
-            <Card className="bg-card/40 backdrop-blur-xl border-border/30 text-center py-12">
-              <CardContent>
-                <motion.div
-                  animate={{ y: [0, -6, 0] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+          {/* Custom Filters Wrapper */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+              <div className="flex items-center gap-2 text-[10px] text-white/40 tracking-widest uppercase">
+                <Filter className="w-3 h-3" /> Draft Parameters
+              </div>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-[10px] text-white/50 tracking-widest uppercase">Target Sector</label>
+                <select 
+                  className="w-full bg-[#09090b] border border-white/10 text-xs p-2 rounded text-white focus:border-indigo-500/50 outline-none"
+                  value={draftFilters.sector || ''}
+                  onChange={e => setDraftFilters({...draftFilters, sector: e.target.value || undefined})}
                 >
-                  <Search className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                </motion.div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">No Results Yet</h3>
-                <p className="text-muted-foreground">
-                  Run a screen or use AI to find stocks matching your criteria
+                  <option value="">ANY SECTOR</option>
+                  <option value="Technology">TECHNOLOGY</option>
+                  <option value="Finance">FINANCE</option>
+                  <option value="Healthcare">HEALTHCARE</option>
+                  <option value="Energy">ENERGY</option>
+                  <option value="Consumer">CONSUMER</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] text-white/50 tracking-widest uppercase">Price Range ($)</label>
+                <div className="flex gap-2">
+                  <input type="number" placeholder="MIN" className="w-full bg-[#09090b] border border-white/10 p-2 text-xs rounded" value={draftFilters.priceMin || ''} onChange={e => setDraftFilters({...draftFilters, priceMin: parseFloat(e.target.value) || undefined})} />
+                  <input type="number" placeholder="MAX" className="w-full bg-[#09090b] border border-white/10 p-2 text-xs rounded" value={draftFilters.priceMax || ''} onChange={e => setDraftFilters({...draftFilters, priceMax: parseFloat(e.target.value) || undefined})} />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] text-white/50 tracking-widest uppercase">Volume Min</label>
+                <input type="number" placeholder="e.g. 1000000" className="w-full bg-[#09090b] border border-white/10 p-2 text-xs rounded" value={draftFilters.volumeMin || ''} onChange={e => setDraftFilters({...draftFilters, volumeMin: parseFloat(e.target.value) || undefined})} />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] text-white/50 tracking-widest uppercase">Daily Change (%)</label>
+                <div className="flex gap-2">
+                  <input type="number" placeholder="MIN" className="w-full bg-[#09090b] border border-white/10 p-2 text-xs rounded" value={draftFilters.changePercentMin || ''} onChange={e => setDraftFilters({...draftFilters, changePercentMin: parseFloat(e.target.value) || undefined})} />
+                  <input type="number" placeholder="MAX" className="w-full bg-[#09090b] border border-white/10 p-2 text-xs rounded" value={draftFilters.changePercentMax || ''} onChange={e => setDraftFilters({...draftFilters, changePercentMax: parseFloat(e.target.value) || undefined})} />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] text-white/50 tracking-widest uppercase">RSI(14) Boundaries</label>
+                <div className="flex gap-2">
+                  <input type="number" placeholder="MIN (0)" className="w-full bg-[#09090b] border border-white/10 p-2 text-xs rounded" value={draftFilters.rsiMin || ''} onChange={e => setDraftFilters({...draftFilters, rsiMin: parseFloat(e.target.value) || undefined})} />
+                  <input type="number" placeholder="MAX (100)" className="w-full bg-[#09090b] border border-white/10 p-2 text-xs rounded" value={draftFilters.rsiMax || ''} onChange={e => setDraftFilters({...draftFilters, rsiMax: parseFloat(e.target.value) || undefined})} />
+                </div>
+              </div>
+
+              {/* Explicit Visual Prompt to Run */}
+              {JSON.stringify(draftFilters) !== JSON.stringify(activeFilters) && hasRun && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 text-amber-500 text-[10px] uppercase tracking-widest rounded text-center animate-pulse">
+                  Draft Filters Modified.<br/>Click 'Run Screen' to apply.
+                </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT PANEL: DATAGRID */}
+        <div className="flex-1 flex flex-col p-6 bg-gradient-to-br from-indigo-500/[0.02] to-transparent">
+          
+          <div className="flex justify-between items-end mb-4 border-b border-white/10 pb-4">
+            <div>
+              <h2 className="text-xl font-light tracking-widest">SCREENER_RESULTS</h2>
+              <div className="flex items-center gap-2 mt-1">
+                {hasRun ? (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                    <p className="text-xs text-indigo-400">{results.length} Assets matching {getActiveFilterCount()} active filters</p>
+                  </>
+                ) : (
+                  <>
+                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                    <p className="text-xs text-white/40">SYSTEM STANDBY - READY TO EXECUTE</p>
+                  </>
+                )}
+              </div>
+            </div>
+            
+            {results.length > 0 && (
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] text-white/50 tracking-widest">SORT:</span>
+                <select 
+                  className="bg-transparent border-none text-xs text-white focus:outline-none cursor-pointer"
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as any)}
+                >
+                  <option className="bg-[#09090b]" value="changePercent">CHANGE YIELD</option>
+                  <option className="bg-[#09090b]" value="volume">VOLUME</option>
+                  <option className="bg-[#09090b]" value="rsi">RSI MOMENTUM</option>
+                </select>
+                <button 
+                  onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')}
+                  className="text-white/50 hover:text-white"
+                >
+                  {sortOrder === 'desc' ? '▼' : '▲'}
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex-1 overflow-auto hide-scrollbar">
+            {hasRun && results.length > 0 ? (
+              <div className="min-w-[800px]">
+                {/* Header Row */}
+                <div className="grid grid-cols-7 gap-4 px-4 py-2 border-b border-white/5 text-[10px] font-bold tracking-widest text-white/40 uppercase sticky top-0 bg-[#09090b]/90 backdrop-blur z-10">
+                  <div className="col-span-1">TICKER</div>
+                  <div className="col-span-1 text-right">PRICE</div>
+                  <div className="col-span-1 text-right">CHANGE</div>
+                  <div className="col-span-1 text-right">VOLUME</div>
+                  <div className="col-span-1 text-right">RSI(14)</div>
+                  <div className="col-span-1 text-right">MOMENTUM BAR</div>
+                  <div className="col-span-1 text-right">SECTOR</div>
+                </div>
+                
+                {/* Data Rows */}
+                <div className="divide-y divide-white/5">
+                  {sortedResults.map((row, idx) => (
+                    <motion.div 
+                      key={row.symbol}
+                      initial={{ opacity: 0, y: 5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.02 }}
+                      className="grid grid-cols-7 gap-4 px-4 py-3 hover:bg-white/5 transition-colors items-center group cursor-pointer"
+                    >
+                      <div className="col-span-1 flex flex-col">
+                        <span className="font-bold text-white group-hover:text-indigo-400 transition-colors">{row.symbol}</span>
+                      </div>
+                      
+                      <div className="col-span-1 text-right font-light">
+                        ${row.price.toFixed(2)}
+                      </div>
+                      
+                      <div className={`col-span-1 flex items-center justify-end gap-1 font-medium ${row.changePercent >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {row.changePercent >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+                        {Math.abs(row.changePercent).toFixed(2)}%
+                      </div>
+                      
+                      <div className="col-span-1 text-right">
+                        {(row.volume / 1e6).toFixed(2)}M
+                      </div>
+                      
+                      <div className={`col-span-1 text-right ${!row.rsi ? 'text-white/20' : row.rsi > 70 ? 'text-rose-400' : row.rsi < 30 ? 'text-emerald-400' : 'text-white/80'}`}>
+                        {row.rsi ? row.rsi.toFixed(1) : '—'}
+                      </div>
+                      
+                      <div className="col-span-1 flex items-center justify-end">
+                        <div className="w-24 h-1.5 bg-white/10 rounded overflow-hidden">
+                          <div 
+                            className={`h-full ${row.changePercent >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}
+                            style={{ width: `${Math.min(Math.max(Math.abs(row.changePercent) * 10, 5), 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="col-span-1 text-right text-[10px] text-white/50 truncate uppercase tracking-widest">
+                        {row.sector || 'UNKNOWN'}
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-white/20">
+                <Search className="w-16 h-16 mb-4 opacity-50" />
+                <p className="text-sm tracking-widest uppercase">
+                  {hasRun ? '0 ASSETS MATCHING ACTIVE PROTOCOL' : 'AWAITING FILTER ACTIVATION'}
                 </p>
-              </CardContent>
-            </Card>
-          </motion.div>
-        )}
+                <p className="text-[10px] tracking-widest font-light mt-2 max-w-sm text-center">
+                  {hasRun ? 'ADJUST PARAMETERS AND CLICK RUN SCREEN TO RE-EXECUTE.' : 'SELECT FILTERS FROM THE LEFT PANEL AND CLICK "RUN SCREEN" TO INITIATE ASSET DISCOVERY.'}
+                </p>
+              </div>
+            )}
+           </div>
+
+        </div>
       </div>
     </div>
   );
-};
-
-export default Screener;
+}

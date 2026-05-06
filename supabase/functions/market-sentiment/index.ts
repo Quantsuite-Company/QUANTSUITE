@@ -5,7 +5,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+const SYSTEM_AI_API_KEY = Deno.env.get('SYSTEM_AI_API_KEY');
 
 interface SentimentRequest {
   headlines: string[];
@@ -28,8 +28,8 @@ serve(async (req) => {
   }
 
   try {
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    if (!SYSTEM_AI_API_KEY) {
+      throw new Error('SYSTEM_AI_API_KEY not configured');
     }
 
     const { headlines, symbol }: SentimentRequest = await req.json();
@@ -43,11 +43,11 @@ serve(async (req) => {
 
     console.log(`[QuantSuite] Analyzing sentiment for ${symbol || 'market'}: ${headlines.length} headlines`);
 
-    // Call Lovable AI for sentiment analysis
+    // Call AI for sentiment analysis
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${SYSTEM_AI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -110,7 +110,7 @@ serve(async (req) => {
       }
       if (aiResponse.status === 402) {
         return new Response(
-          JSON.stringify({ error: 'Lovable AI credits exhausted. Please add funds.' }),
+          JSON.stringify({ error: 'AI credits exhausted. Please add funds.' }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }

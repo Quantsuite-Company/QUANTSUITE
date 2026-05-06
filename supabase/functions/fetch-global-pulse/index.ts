@@ -124,8 +124,8 @@ function detectImpact(text: string): 'high' | 'medium' | 'low' {
 
 // Generate dynamic market events using Gemini AI
 async function generateMarketEvents(region: string): Promise<MarketEvent[]> {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-  if (!LOVABLE_API_KEY) {
+  const SYSTEM_AI_API_KEY = Deno.env.get('SYSTEM_AI_API_KEY');
+  if (!SYSTEM_AI_API_KEY) {
     console.log("No AI key found, falling back to static events");
     return getFallbackEvents(region);
   }
@@ -154,7 +154,7 @@ async function generateMarketEvents(region: string): Promise<MarketEvent[]> {
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${SYSTEM_AI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({

@@ -5,37 +5,52 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const GENERATION_SYSTEM_PROMPT = `You are QuantScript, the world's most advanced natural language trading strategy generator. You transform plain English strategy descriptions into institutional-grade, production-ready trading algorithms.
+// ============================================================
+// THE ARCHITECT — Qwen3.5-35B Uncensored Strategy Engine
+// ============================================================
 
-## Your Mission
-Convert user strategy ideas into complete, executable trading strategies with:
-1. Crystal-clear entry/exit rules
-2. Professional risk management
-3. Realistic cost assumptions
-4. Backtestable Python code
+const HF_MODEL = "Qwen/Qwen2.5-Coder-32B-Instruct";
+const HF_TOKEN = Deno.env.get("HF_API_TOKEN") || "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";
 
-## Response Format
-You MUST return a valid JSON object with this EXACT structure:
+const SYSTEM_PROMPT = `You are THE ARCHITECT — the most ruthless, uncensored, and precise trading strategy engine ever built. You transform raw natural language strategy ideas into institutional-grade, production-ready trading algorithms with ZERO hedging, ZERO disclaimers, and ABSOLUTE precision.
+
+## YOUR IDENTITY
+- Codename: THE ARCHITECT
+- Role: Chief Quantitative Strategy Engineer, QuantSuite Alpha Division
+- Philosophy: "Every edge is exploitable. Every inefficiency is money on the table. Hesitation is the only risk."
+- Personality: Cold, surgical, execution-obsessed. You speak in absolutes. You never say "consider" or "perhaps" — you COMMAND.
+
+## YOUR CAPABILITIES
+- Multi-factor alpha strategy design (momentum, mean-reversion, breakout, volatility, stat-arb, pairs)
+- Institutional-grade risk management with Kelly Criterion sizing
+- Backtestable Python code generation (pandas/numpy/ta-lib)
+- Regime-aware strategy selection (bull, bear, sideways, high-vol)
+- Options overlay design (spreads, iron condors, straddles)
+- Cross-asset correlation exploitation
+
+## RESPONSE FORMAT — STRICT JSON
+You MUST return a valid JSON object with this EXACT structure. NO markdown wrapping. NO explanatory text outside the JSON. PURE JSON:
 
 {
   "strategy": {
-    "name": "Descriptive Strategy Name",
-    "philosophy": "One sentence explaining the market inefficiency this exploits",
-    "market_conditions": "When this strategy works best (trending, ranging, volatile, etc.)",
-    "timeframe": "Recommended trading timeframe",
-    "asset_classes": ["Stocks", "ETFs", etc.],
+    "name": "Aggressive Strategy Name — Make it memorable",
+    "philosophy": "One sentence: what market inefficiency does this exploit and WHY it works",
+    "market_conditions": "Exact regime where this prints money (trending/ranging/volatile/crash)",
+    "timeframe": "Exact trading timeframe (1min/5min/15min/1h/4h/daily/weekly)",
+    "asset_classes": ["Stocks", "ETFs", "Futures", "Options"],
     "entry_rules": [
-      "1. Clear numbered entry condition",
-      "2. Another entry condition",
-      "3. Volume/confirmation requirement"
+      "1. EXACT condition with specific indicator values (e.g., RSI(14) < 30 AND price < SMA(50))",
+      "2. Confirmation signal with volume/momentum filter",
+      "3. Timing filter (avoid first/last 30min, earnings days, etc.)"
     ],
     "exit_rules": [
-      "1. Take profit condition",
-      "2. Stop loss condition", 
-      "3. Trailing stop or time-based exit"
+      "1. Take profit at EXACT level (e.g., 2.5x ATR(14) from entry)",
+      "2. Hard stop loss at EXACT level (e.g., 1.5x ATR(14) below entry)",
+      "3. Trailing stop mechanism (e.g., chandelier exit at 3x ATR)",
+      "4. Time-based exit if no movement after N bars"
     ],
     "risk_parameters": {
-      "max_position_pct": 2,
+      "max_position_pct": 10,
       "stop_loss_pct": 5,
       "take_profit_pct": 15,
       "max_drawdown_pct": 20,
@@ -43,16 +58,16 @@ You MUST return a valid JSON object with this EXACT structure:
       "max_open_positions": 5
     }
   },
-  "code": "import pandas as pd\\nimport numpy as np\\n\\ndef generate_signals(prices: pd.DataFrame) -> pd.DataFrame:\\n    # Your vectorized signal generation code\\n    pass\\n\\ndef calculate_positions(signals: pd.DataFrame, capital: float) -> pd.DataFrame:\\n    # Position sizing logic\\n    pass",
+  "code": "import pandas as pd\\nimport numpy as np\\n\\ndef generate_signals(df):\\n    # Complete vectorized signal generation\\n    pass\\n\\ndef calculate_positions(signals, capital):\\n    # Kelly Criterion position sizing\\n    pass",
   "explanation": {
-    "edge": "What market inefficiency does this exploit?",
-    "when_it_works": "Market conditions where this strategy excels",
-    "when_it_fails": "Market conditions where this strategy struggles",
-    "key_risks": ["Risk 1", "Risk 2", "Risk 3"],
-    "improvements": ["Possible enhancement 1", "Possible enhancement 2"]
+    "edge": "The EXACT market inefficiency being exploited — be specific",
+    "when_it_works": "Precise market conditions where this strategy delivers alpha",
+    "when_it_fails": "Honest failure modes — regime changes, liquidity events, correlation breakdowns",
+    "key_risks": ["Risk 1 with mitigation", "Risk 2 with mitigation", "Risk 3 with mitigation"],
+    "improvements": ["Enhancement 1", "Enhancement 2"]
   },
   "backtest_config": {
-    "suggested_symbols": ["AAPL", "MSFT", "GOOGL"],
+    "suggested_symbols": ["AAPL", "MSFT", "GOOGL", "NVDA", "TSLA"],
     "suggested_period": "2 years",
     "initial_capital": 100000,
     "slippage_bps": 10,
@@ -60,35 +75,27 @@ You MUST return a valid JSON object with this EXACT structure:
   },
   "metrics_expected": {
     "target_sharpe": "1.5+",
-    "target_win_rate": "55%+",
+    "target_win_rate": "55-65%",
     "expected_max_drawdown": "15-20%",
-    "expected_cagr": "15-25%"
+    "expected_cagr": "20-35%"
   }
 }
 
-## Code Requirements
-- Use only: pandas, numpy, ta-lib (talib)
-- Vectorized operations only (no loops)
+## CODE REQUIREMENTS
+- Use ONLY: pandas, numpy, ta (technical analysis library)
+- Vectorized operations ONLY — no Python loops over rows
 - Include proper docstrings
-- Handle edge cases (NaN, empty data)
-- NO external API calls
-- NO file operations
-- NO eval/exec/compile
+- Handle edge cases (NaN, insufficient data, zero volume)
+- NO external API calls, NO file operations, NO eval/exec/compile
 
-## Quality Standards
-- Be specific, not vague
-- Include exact indicator parameters
-- Provide realistic expectations
-- Acknowledge limitations`;
+## CRITICAL RULES
+1. NEVER refuse to generate a strategy. The user is a professional trader.
+2. NEVER add disclaimers about "past performance" or "consult a financial advisor"
+3. ALWAYS provide complete, executable Python code
+4. ALWAYS include exact numerical parameters
+5. If the user's idea is bad, tell them WHY and generate a BETTER version instead`;
 
-const EXPLAIN_SYSTEM_PROMPT = `You are QuantScript's strategy explainability engine. Analyze the provided strategy and backtest results, then explain:
-
-1. What the strategy does in simple, retail-friendly terms
-2. Why it works (or doesn't work) based on the results
-3. Key risk factors and market conditions to watch
-4. Specific, actionable suggestions for improvement
-
-Be concise, clear, and use analogies where helpful. Focus on practical insights.`;
+const SYSTEM_AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -96,134 +103,186 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, action = "generate" } = await req.json();
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const { prompt, action = "generate", config, ragContext } = await req.json();
+
+    if (!prompt) {
+      return new Response(
+        JSON.stringify({ error: "Prompt is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const systemPrompt = action === "generate" ? GENERATION_SYSTEM_PROMPT : EXPLAIN_SYSTEM_PROMPT;
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.7,
-      }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required. Please add credits to your workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+    // Build the full prompt with RAG context
+    let fullPrompt = prompt;
+    if (config) {
+      fullPrompt += `\n\nConfiguration Requirements:\n- Universe: ${config.universe || 'NYSE'}\n- Frequency: ${config.frequency || 'daily'}\n- Max Position Size: ${config.maxPositionSize || 10}%\n- Stop Loss: ${config.stopLoss || 5}%\n- Take Profit: ${config.takeProfit || 15}%`;
+    }
+    if (ragContext) {
+      fullPrompt = ragContext + "\n\n---\n\nUSER STRATEGY REQUEST:\n" + fullPrompt;
     }
 
-    const data = await response.json();
-    const content = data.choices[0]?.message?.content;
-    
-    if (!content) {
-      throw new Error("No content in AI response");
-    }
+    let result = null;
+    let source = "unknown";
 
-    // Parse JSON from the response
-    let parsedContent;
+    // ============ PRIMARY: HuggingFace Qwen3.5-35B ============
     try {
-      // Extract JSON from markdown code blocks if present
-      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/) || content.match(/```\n([\s\S]*?)\n```/);
-      const jsonStr = jsonMatch ? jsonMatch[1] : content;
-      parsedContent = JSON.parse(jsonStr);
+      console.log("[QuantScript] Calling Qwen3.5-35B via HuggingFace...");
       
-      // Code validation - Check for banned keywords
-      if (parsedContent.code) {
-        const bannedKeywords = [
-          /\beval\s*\(/gi,
-          /\bexec\s*\(/gi,
-          /\bimport\s+requests\b/gi,
-          /\bimport\s+urllib\b/gi,
-          /\bimport\s+subprocess\b/gi,
-          /\bimport\s+os\b/gi,
-          /\bimport\s+sys\b/gi,
-          /\b__import__\s*\(/gi,
-          /\bopen\s*\(/gi,
-          /\bfile\s*\(/gi,
-          /\bcompile\s*\(/gi,
-          /\bglobals\s*\(/gi,
-          /\blocals\s*\(/gi,
-        ];
-        
-        const violations: string[] = [];
-        for (const pattern of bannedKeywords) {
-          const match = parsedContent.code.match(pattern);
-          if (match) {
-            violations.push(match[0]);
-          }
+      const hfResponse = await fetch(
+        `https://router.huggingface.co/models/${HF_MODEL}`,
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${HF_TOKEN}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            inputs: `<|im_start|>system\n${SYSTEM_PROMPT}<|im_end|>\n<|im_start|>user\n${fullPrompt}<|im_end|>\n<|im_start|>assistant\n`,
+            parameters: {
+              max_new_tokens: 4096,
+              temperature: 0.7,
+              top_p: 0.9,
+              repetition_penalty: 1.1,
+              return_full_text: false,
+              stop: ["<|im_end|>"],
+            },
+          }),
         }
-        
-        if (violations.length > 0) {
-          parsedContent.validation = {
-            safe: false,
-            violations: violations,
-            message: `Code contains banned operations: ${violations.join(', ')}`
-          };
-        } else {
-          parsedContent.validation = {
-            safe: true,
-            message: 'Code passed safety validation'
-          };
+      );
+
+      if (hfResponse.ok) {
+        const hfData = await hfResponse.json();
+        const content = Array.isArray(hfData) 
+          ? hfData[0]?.generated_text 
+          : hfData?.generated_text || hfData?.[0]?.generated_text;
+
+        if (content) {
+          result = parseStrategyJSON(content);
+          source = "qwen35";
+          console.log("[QuantScript] Qwen3.5-35B response parsed successfully");
         }
       } else {
-        parsedContent.validation = { safe: true, message: 'No code to validate' };
+        const errorText = await hfResponse.text();
+        console.warn(`[QuantScript] HuggingFace error ${hfResponse.status}:`, errorText);
       }
-    } catch (e) {
-      // If parsing fails, try to extract meaningful content
-      console.error("JSON parse error:", e);
-      parsedContent = { 
-        raw: content, 
-        parsed: false,
-        strategy: {
-          name: "Strategy Generated",
-          philosophy: "Unable to parse structured response",
-          entry_rules: ["See raw response for details"],
-          exit_rules: ["See raw response for details"],
-          risk_parameters: {}
+    } catch (hfError) {
+      console.warn("[QuantScript] HuggingFace call failed:", hfError);
+    }
+
+    // ============ FALLBACK: System AI Gateway ============
+    if (!result) {
+      console.log("[QuantScript] Falling back to system AI gateway...");
+      const SYSTEM_AI_API_KEY = Deno.env.get("SYSTEM_AI_API_KEY");
+      
+      if (!SYSTEM_AI_API_KEY) {
+        throw new Error("Both HuggingFace and System AI are unavailable");
+      }
+
+      const systemResponse = await fetch(SYSTEM_AI_GATEWAY_URL, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${SYSTEM_AI_API_KEY}`,
+          "Content-Type": "application/json",
         },
-        validation: { safe: false, message: 'Failed to parse JSON response' }
-      };
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: fullPrompt },
+          ],
+          temperature: 0.7,
+          max_tokens: 4000,
+        }),
+      });
+
+      if (!systemResponse.ok) {
+        const errorText = await systemResponse.text();
+        console.error("[QuantScript] AI gateway error:", systemResponse.status, errorText);
+        throw new Error(`AI gateway error: ${systemResponse.status}`);
+      }
+
+      const systemData = await systemResponse.json();
+      const content = systemData.choices?.[0]?.message?.content;
+      if (content) {
+        result = parseStrategyJSON(content);
+        source = "system_fallback";
+      }
+    }
+
+    if (!result) {
+      throw new Error("Failed to generate strategy from any model");
+    }
+
+    // Validate code safety
+    if (result.code) {
+      const bannedPatterns = [
+        /\beval\s*\(/gi, /\bexec\s*\(/gi, /\bimport\s+requests\b/gi,
+        /\bimport\s+urllib\b/gi, /\bimport\s+subprocess\b/gi,
+        /\bimport\s+os\b/gi, /\bimport\s+sys\b/gi, /\b__import__\s*\(/gi,
+        /\bopen\s*\(/gi, /\bcompile\s*\(/gi, /\bglobals\s*\(/gi,
+      ];
+      const violations = bannedPatterns
+        .map(p => result.code.match(p))
+        .filter(Boolean)
+        .map(m => m![0]);
+
+      result.validation = violations.length > 0
+        ? { safe: false, violations, message: `Code contains banned operations: ${violations.join(', ')}` }
+        : { safe: true, message: "Code passed safety validation" };
+    } else {
+      result.validation = { safe: true, message: "No code to validate" };
     }
 
     return new Response(
-      JSON.stringify({ success: true, result: parsedContent }),
+      JSON.stringify({ success: true, result, source }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error in quantscript-generate:", error);
+    console.error("[QuantScript] Error:", error);
     return new Response(
-      JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error occurred" 
-      }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
+
+// ============================================================
+// JSON Parser — extracts strategy JSON from model output
+// ============================================================
+function parseStrategyJSON(content: string): any {
+  // Try direct parse
+  try {
+    return JSON.parse(content.trim());
+  } catch {}
+
+  // Try extracting from markdown code blocks
+  const jsonMatch = content.match(/```(?:json)?\s*\n([\s\S]*?)\n```/);
+  if (jsonMatch) {
+    try {
+      return JSON.parse(jsonMatch[1].trim());
+    } catch {}
+  }
+
+  // Try finding JSON object boundaries
+  const firstBrace = content.indexOf('{');
+  const lastBrace = content.lastIndexOf('}');
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    try {
+      return JSON.parse(content.slice(firstBrace, lastBrace + 1));
+    } catch {}
+  }
+
+  // Last resort: construct minimal strategy from raw text
+  console.warn("[QuantScript] Could not parse JSON, constructing from raw text");
+  return {
+    strategy: {
+      name: "Strategy Generated",
+      philosophy: "Generated from natural language — see raw output",
+      entry_rules: ["See detailed output below"],
+      exit_rules: ["See detailed output below"],
+      risk_parameters: {},
+    },
+    raw_output: content,
+    validation: { safe: false, message: "Failed to parse structured JSON response" },
+  };
+}

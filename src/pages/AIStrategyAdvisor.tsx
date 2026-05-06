@@ -5,6 +5,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuantSuiteStore } from '@/stores/quantsuiteStore';
+import { formatPulseSignalsForAI } from '@/lib/pulseEventEngine';
+
 import AIToolWrapper from '@/components/ai/AIToolWrapper';
 import { Link } from 'react-router-dom';
 import { parseAIResponse } from '@/lib/aiResponseParser';
@@ -40,7 +42,8 @@ const AIStrategyAdvisor = () => {
   const [mlResult, setMlResult] = useState<MLPipelineResult | null>(null);
   const [backtestResult, setBacktestResult] = useState<BacktestResult | null>(null);
   const [liveData, setLiveData] = useState<any>(null);
-  const { sharedAlerts } = useQuantSuiteStore();
+  const { pulseSignals } = useQuantSuiteStore();
+
 
   const commandSuggestions = [
     { icon: <Brain className="w-4 h-4" />, label: "Hedge Strategy", description: "Get hedging recommendations", prefix: "/hedge" },
@@ -145,14 +148,11 @@ You are THE EXECUTIONER, Chief Strategy Architect. Your ONLY goal is to design a
         setMlResult(pipelineResult);
         enhancedQuery += formatMLContextForLLM(pipelineResult);
 
-        // Inject Geopolitical Alert Bus Data
-        if (sharedAlerts && sharedAlerts.length > 0) {
-          enhancedQuery += `\n\n[CRITICAL: GLOBAL ALERT BUS]\nThe following geopolitical events are currently unfolding and may impact strategy execution:\n`;
-          sharedAlerts.forEach(alert => {
-            enhancedQuery += `- [${alert.level.toUpperCase()}] ${alert.message} (Source: ${alert.source})\n`;
-          });
-          enhancedQuery += `Ensure your strategy accounts for these systemic risks.\n`;
+        // Inject Pulse Intelligence (structured signals with strategy context)
+        if (pulseSignals && pulseSignals.length > 0) {
+          enhancedQuery += formatPulseSignalsForAI(pulseSignals, 'strategy');
         }
+
 
         // Auto-run backtest for strategy queries
         const btConfig: BacktestConfig = {

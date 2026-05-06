@@ -60,7 +60,7 @@ const MonteCarloSimulation = () => {
   const fetchStockPrice = async (symbol: string) => {
     try {
       const response = await fetch(
-        `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=demo`
+        `https://api.twelvedata.com/quote?symbol=${symbol}&apikey=6f5594d8e0d34335b402b9ee435f117d`
       );
       const data = await response.json();
       const quote = data['Global Quote'];

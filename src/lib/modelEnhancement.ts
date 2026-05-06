@@ -174,3 +174,62 @@ export function compressMarketContext(indices: any[]): string {
   if (!indices || indices.length === 0) return 'No market data.';
   return indices.map(i => `${i.name || i.symbol}: ${i.price?.toFixed(0) || '?'} (${i.changePercent >= 0 ? '+' : ''}${i.changePercent?.toFixed(2) || '?'}%)`).join(' | ');
 }
+
+// ================================
+// V5: HALLUCINATION GUARD POST-PROCESSOR
+// ================================
+
+/**
+ * Scans an AI response for numbers that do NOT appear in the injected data context.
+ * Flags potentially hallucinated metrics. Returns the response with warnings injected.
+ */
+export function hallucinationGuard(aiResponse: string, injectedContext: string): {
+  cleanedResponse: string;
+  flaggedNumbers: string[];
+  hallucineScore: number; // 0-1, where 1 = likely all hallucinated
+} {
+  // Extract all numbers from the AI response (prices, percentages, metrics)
+  const numberPattern = /(?:[$₹€£]?\s*[\d,]+\.?\d*\s*%?)/g;
+  const responseNumbers = (aiResponse.match(numberPattern) || [])
+    .map(n => n.replace(/[$₹€£,\s%]/g, ''))
+    .filter(n => n.length > 0 && !isNaN(parseFloat(n)));
+
+  // Extract all numbers from the injected context
+  const contextNumbers = (injectedContext.match(numberPattern) || [])
+    .map(n => n.replace(/[$₹€£,\s%]/g, ''))
+    .filter(n => n.length > 0 && !isNaN(parseFloat(n)));
+
+  const contextSet = new Set(contextNumbers);
+
+  // Find numbers in response that aren't in context
+  const flagged: string[] = [];
+  for (const num of responseNumbers) {
+    const val = parseFloat(num);
+    // Skip common non-data numbers (0, 1, 2, 100, chart axis values, etc.)
+    if (val === 0 || val === 1 || val === 100 || val === 50 || val === 5) continue;
+    // Skip small integers that are likely formatting (e.g. "top 3", "5 positions")
+    if (Number.isInteger(val) && val < 20) continue;
+
+    if (!contextSet.has(num)) {
+      // Check if it's close to any context number (within 0.1% — could be a rounding difference)
+      const isClose = contextNumbers.some(cn => {
+        const cv = parseFloat(cn);
+        return Math.abs(cv - val) / (Math.abs(cv) || 1) < 0.001;
+      });
+      if (!isClose) {
+        flagged.push(num);
+      }
+    }
+  }
+
+  const hallucineScore = responseNumbers.length > 0
+    ? flagged.length / responseNumbers.length
+    : 0;
+
+  let cleanedResponse = aiResponse;
+  if (flagged.length > 0 && hallucineScore > 0.3) {
+    cleanedResponse += `\n\n---\n⚠️ **DATA INTEGRITY WARNING**: ${flagged.length} numeric values in this response could not be traced to the source data. Hallucination score: ${(hallucineScore * 100).toFixed(0)}%. Flagged values: ${flagged.slice(0, 5).join(', ')}${flagged.length > 5 ? '...' : ''}`;
+  }
+
+  return { cleanedResponse, flaggedNumbers: flagged, hallucineScore };
+}

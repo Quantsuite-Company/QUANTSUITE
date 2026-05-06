@@ -59,3 +59,6 @@ verify_jwt = false
 
 [functions.ai-strategy-advisor]
 verify_jwt = false
+
+[functions.quantscript-qwen]
+verify_jwt = false

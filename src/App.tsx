@@ -33,8 +33,6 @@ import ArbitrageDetector from "./pages/ArbitrageDetector";
 import EducationalInsight from "./pages/EducationalInsight";
 import AdvancedGreeks from "./pages/AdvancedGreeks";
 import AdvancedScenarioAnalysis from "./pages/AdvancedScenarioAnalysis";
-import Athena from "./pages/Athena";
-import MarketMaw from "./pages/MarketMaw";
 import Tutorial from "./pages/Tutorial";
 import CSVVisualizer from "./pages/CSVVisualizer";
 import StrategyBuilder from "./pages/StrategyBuilder";
@@ -42,6 +40,7 @@ import QuantEngine from "./pages/QuantEngine";
 import CommandCenter from "./pages/CommandCenter";
 import MarketTerminal from "./pages/MarketTerminal";
 import Portfolios from "./pages/Portfolios";
+import PortfolioTerminal from "./pages/PortfolioTerminal";
 import AlphaSignals from "./pages/AlphaSignals";
 import WalkForwardBacktest from "./pages/WalkForwardBacktest";
 import BacktestHistory from "./pages/BacktestHistory";
@@ -56,6 +55,8 @@ import CreditRiskModels from "./pages/CreditRiskModels";
 import StockReport from "./pages/StockReport";
 import EarningsCalendar from "./pages/EarningsCalendar";
 import Pulse from "./pages/Pulse";
+import AgentOrchestrator from "./pages/AgentOrchestrator";
+import Onboarding from "./pages/Onboarding";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -85,6 +86,7 @@ const App: React.FC = () => {
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/insights" element={<Insights />} />
                 <Route path="/login" element={<Login />} />
+                <Route path="/onboarding" element={<Onboarding />} />
                 <Route path="/privacy-policy" element={<Layout><PrivacyPolicy /></Layout>} />
                 <Route path="/faq" element={<Layout><FAQ /></Layout>} />
                 <Route path="/about" element={<Layout><About /></Layout>} />
@@ -106,32 +108,22 @@ const App: React.FC = () => {
                   </ProtectedRoute>
                 } />
                 
-                {/* Protected Routes - AI Tools */}
-                <Route path="/athena" element={
+                <Route path="/agent-orchestrator" element={
                   <ProtectedRoute>
-                    <Layout><Athena /></Layout>
+                    <Layout><AgentOrchestrator /></Layout>
                   </ProtectedRoute>
                 } />
-                <Route path="/market-maw" element={
-                  <ProtectedRoute>
-                    <Layout><MarketMaw /></Layout>
-                  </ProtectedRoute>
-                } />
-                <Route path="/advisor" element={
-                  <ProtectedRoute>
-                    <Layout><Advisor /></Layout>
-                  </ProtectedRoute>
-                } />
-                <Route path="/ai-strategy-advisor" element={
-                  <ProtectedRoute>
-                    <Layout><AIStrategyAdvisor /></Layout>
-                  </ProtectedRoute>
-                } />
+
                 
                 {/* Protected Routes - Portfolio Management */}
                 <Route path="/portfolios" element={
                   <ProtectedRoute>
                     <Layout><Portfolios /></Layout>
+                  </ProtectedRoute>
+                } />
+                <Route path="/portfolio-terminal" element={
+                  <ProtectedRoute>
+                    <Layout><PortfolioTerminal /></Layout>
                   </ProtectedRoute>
                 } />
                 <Route path="/alpha-signals" element={

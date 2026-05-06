@@ -1,295 +1,391 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ParameterInput } from './ParameterInput';
-import { ResultsPanel } from './ResultsPanel';
-import { UniversalExplanationPanel } from './UniversalExplanationPanel';
-import { StockAutocomplete } from '@/components/StockAutocomplete';
-import { BlackScholesParams, calculateBlackScholes, BlackScholesResult } from '@/lib/blackScholes';
-import { alphaVantageService } from '@/lib/alphaVantageApi';
-import { Calculator, RefreshCircle, TrendUp } from 'iconsax-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { BlackScholesParams, calculateBlackScholes } from '@/lib/blackScholes';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
 
-const defaultParams: BlackScholesParams = {
-  S: 100,    // Stock price
-  K: 100,    // Strike price
-  T: 1,      // Time to expiration (years)
-  r: 0.05,   // Risk-free rate (5%)
-  sigma: 0.2, // Volatility (20%)
-  q: 0,      // Dividend yield (0%)
+const C = {
+  bg: '#050505',
+  panel: '#0a0a0c',
+  border: 'rgba(255,255,255,0.1)',
+  textH: '#ffffff',
+  textM: 'rgba(255,255,255,0.7)',
+  textD: 'rgba(255,255,255,0.4)',
+  cyan: '#06b6d4',
+  purple: '#8b5cf6',
+  green: '#10b981',
+  red: '#f43f5e',
+  amber: '#f59e0b',
+};
+
+const FONT = '"Times New Roman", Times, serif';
+
+const safeFormat = (val: number, decimals: number = 4) => {
+  if (isNaN(val) || !isFinite(val)) return 'NaN';
+  if (Math.abs(val) > 1e10 || (Math.abs(val) < 1e-6 && val !== 0)) {
+    return val.toExponential(decimals);
+  }
+  return val.toFixed(decimals);
 };
 
 export const BlackScholesCalculator: React.FC = () => {
   const [ticker, setTicker] = useState('AAPL');
-  const [params, setParams] = useState<BlackScholesParams>(defaultParams);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [priceHistory, setPriceHistory] = useState<{date: string; close: number}[]>([]);
+  const [params, setParams] = useState<BlackScholesParams>({
+    S: 150,
+    K: 150,
+    T: 1,
+    r: 0.05,
+    sigma: 0.2,
+    q: 0,
+  });
+
   const { toast } = useToast();
 
-  // Enhanced fetch using centralized API service
   const fetchStockPrice = async (symbol: string) => {
+    setIsLoading(true);
     try {
-      const quote = await alphaVantageService.getQuote(symbol);
-      
-      if (quote) {
-        setParams(prev => ({ ...prev, S: quote.price }));
-        
-        toast({
-          title: "Stock Price Updated",
-          description: `${symbol}: $${quote.price.toFixed(2)} (${quote.changePercent})`,
-        });
-      } else {
-        throw new Error('Failed to fetch quote');
-      }
-    } catch (error) {
-      toast({
-        title: "Failed to fetch stock price",
-        description: "Using current value or cached data",
-        variant: "destructive",
+      const { data, error } = await supabase.functions.invoke('fetch-stock-data', {
+        body: { symbol, period: '1y' }
       });
+
+      if (error) throw error;
+
+      const chartData = data?.chartData;
+      if (!chartData || chartData.length < 20) {
+        toast({ title: "INSUFFICIENT DATA", description: `${symbol}: Not enough historical data`, variant: "destructive" });
+        setIsLoading(false);
+        return;
+      }
+
+      const closes = chartData.map((d: any) => d.close);
+      const currentPrice = closes[closes.length - 1];
+
+      // Calculate realized volatility from real data
+      const returns: number[] = [];
+      for (let i = 1; i < closes.length; i++) {
+        returns.push(Math.log(closes[i] / closes[i - 1]));
+      }
+      const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
+      const variance = returns.reduce((s, r) => s + Math.pow(r - meanReturn, 2), 0) / returns.length;
+      const realizedVol = Math.sqrt(variance * 252);
+
+      // Store price history for chart
+      setPriceHistory(chartData.slice(-90).map((d: any) => ({
+        date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        close: d.close
+      })));
+
+      setParams(prev => ({
+        ...prev,
+        S: currentPrice,
+        K: Math.round(currentPrice), // ATM strike
+        sigma: realizedVol,
+      }));
+
+      toast({
+        title: "MARKET DATA SYNCED",
+        description: `${symbol}: $${currentPrice.toFixed(2)} | σ = ${(realizedVol * 100).toFixed(1)}% (realized)`
+      });
+    } catch (error: any) {
+      toast({ title: "SYNC FAILED", description: error.message || "Falling back to local parameters", variant: "destructive" });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Memoize the calculation to avoid unnecessary recalculations
+  useEffect(() => {
+    fetchStockPrice('AAPL');
+  }, []);
+
+  const handleParamChange = (key: keyof BlackScholesParams, value: number) => {
+    setParams(prev => ({ ...prev, [key]: value }));
+  };
+
   const result = useMemo(() => {
     try {
       return calculateBlackScholes(params);
     } catch (error) {
-      console.error('Calculation error:', error);
       return null;
     }
   }, [params]);
 
-  // Show error toast when calculation fails
-  useEffect(() => {
-    if (result === null && isLoaded) {
-      toast({
-        title: "Calculation Error",
-        description: "There was an error calculating the option prices. Please check your inputs.",
-        variant: "destructive",
+  // Generate payoff diagram data
+  const payoffData = useMemo(() => {
+    const data = [];
+    const low = params.K * 0.7;
+    const high = params.K * 1.3;
+    const step = (high - low) / 60;
+    const callPremium = result?.prices.call || 0;
+    const putPremium = result?.prices.put || 0;
+
+    for (let s = low; s <= high; s += step) {
+      const callPayoff = Math.max(0, s - params.K) - callPremium;
+      const putPayoff = Math.max(0, params.K - s) - putPremium;
+      data.push({
+        price: Math.round(s * 100) / 100,
+        call: Math.round(callPayoff * 100) / 100,
+        put: Math.round(putPayoff * 100) / 100,
       });
     }
-  }, [result, toast, isLoaded]);
+    return data;
+  }, [params.K, result]);
 
-  // Load saved parameters from localStorage (only once on mount)
-  useEffect(() => {
-    const saved = localStorage.getItem('blackScholesParams');
-    if (saved) {
+  // Generate Greeks sensitivity data (Delta vs Stock Price)
+  const greeksSensitivity = useMemo(() => {
+    const data = [];
+    const low = params.K * 0.8;
+    const high = params.K * 1.2;
+    const step = (high - low) / 30;
+    for (let s = low; s <= high; s += step) {
       try {
-        const parsedParams = JSON.parse(saved);
-        setParams({ ...defaultParams, ...parsedParams });
-      } catch (error) {
-        console.error('Error loading saved parameters:', error);
-      }
+        const r = calculateBlackScholes({ ...params, S: s });
+        if (r) {
+          data.push({
+            price: Math.round(s * 100) / 100,
+            delta: r.greeks.delta.call,
+            gamma: r.greeks.gamma * 100, // scale for visibility
+            theta: Math.abs(r.greeks.theta.call),
+          });
+        }
+      } catch { /* skip */ }
     }
-    setIsLoaded(true);
-  }, []);
+    return data;
+  }, [params]);
 
-  // Save parameters to localStorage (debounced)
-  useEffect(() => {
-    if (!isLoaded) return; // Don't save during initial load
-    
-    const timeoutId = setTimeout(() => {
-      localStorage.setItem('blackScholesParams', JSON.stringify(params));
-    }, 500); // 500ms debounce
+  const currencySymbol = ticker.endsWith('.NS') || ticker.endsWith('.BO') ? '₹' : '$';
 
-    return () => clearTimeout(timeoutId);
-  }, [params, isLoaded]);
-
-  const updateParam = useCallback(<K extends keyof BlackScholesParams>(
-    key: K,
-    value: BlackScholesParams[K]
-  ) => {
-    setParams(prev => ({ ...prev, [key]: value }));
-  }, []);
-
-  const resetToDefaults = useCallback(() => {
-    setParams(defaultParams);
-    toast({
-      title: "Parameters Reset",
-      description: "All parameters have been reset to default values.",
-    });
-  }, [toast]);
-
-  const parameterConfigs = [
-    {
-      key: 'S' as const,
-      label: 'Stock Price',
-      min: 0.01,
-      max: 10000,
-      step: 0.01,
-      suffix: '$',
-      tooltip: 'Current market price of the underlying stock',
-      color: 'param-stock' as const
-    },
-    {
-      key: 'K' as const,
-      label: 'Strike Price',
-      min: 0.01,
-      max: 10000,
-      step: 0.01,
-      suffix: '$',
-      tooltip: 'The price at which the option can be exercised',
-      color: 'param-strike' as const
-    },
-    {
-      key: 'T' as const,
-      label: 'Time to Expiration',
-      min: 0.01,
-      max: 5,
-      step: 0.01,
-      suffix: ' years',
-      tooltip: 'Time remaining until option expiration in years',
-      color: 'param-time' as const
-    },
-    {
-      key: 'r' as const,
-      label: 'Risk-Free Rate',
-      min: 0,
-      max: 0.5,
-      step: 0.001,
-      suffix: '%',
-      tooltip: 'Current risk-free interest rate (e.g., Treasury bill rate)',
-      color: 'param-rate' as const
-    },
-    {
-      key: 'sigma' as const,
-      label: 'Volatility',
-      min: 0.001,
-      max: 2,
-      step: 0.001,
-      suffix: '%',
-      tooltip: 'Expected price volatility of the underlying stock',
-      color: 'param-volatility' as const
-    },
-    {
-      key: 'q' as const,
-      label: 'Dividend Yield',
-      min: 0,
-      max: 0.2,
-      step: 0.001,
-      suffix: '%',
-      tooltip: 'Annual dividend yield of the stock',
-      color: 'param-dividend' as const
-    }
-  ];
+  const InputField = ({ label, param, step, symbol, multiplier = 1 }: any) => (
+    <div className="flex flex-col border-b border-dashed pb-2" style={{ borderColor: C.border }}>
+      <label className="text-[10px] uppercase tracking-widest font-bold mb-1 flex justify-between" style={{ color: C.textD }}>
+        <span>{label}</span>
+        <span style={{ color: C.textH }}>{symbol}</span>
+      </label>
+      <input
+        type="number"
+        value={Number((params[param as keyof BlackScholesParams] * multiplier).toFixed(4))}
+        onChange={e => handleParamChange(param, (parseFloat(e.target.value) || 0) / multiplier)}
+        step={step}
+        className="bg-transparent text-lg focus:outline-none font-bold"
+        style={{ color: C.cyan }}
+      />
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-7xl mx-auto space-y-6 p-4 md:p-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Black-Scholes Calculator
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Professional option pricing with real-time calculations and plain-language explanations
+    <div className="min-h-screen w-full flex flex-col p-8 overflow-y-auto" style={{ backgroundColor: C.bg, color: C.textH, fontFamily: FONT }}>
+
+      {/* HEADER */}
+      <div className="border-b pb-6 mb-8 flex justify-between items-end" style={{ borderColor: C.border }}>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight uppercase" style={{ fontVariant: 'small-caps' }}>Black-Scholes Pricing Engine</h1>
+          <p className="text-[10px] tracking-widest uppercase mt-2 font-bold" style={{ color: C.textD }}>
+            EUROPEAN OPTIONS // CONTINUOUS DIVIDEND // GREEK EXPOSURE // PAYOFF TOPOLOGY
           </p>
         </div>
+        <div className="flex gap-4 items-center">
+          <div className="flex items-center gap-2 border-b pb-1" style={{ borderColor: C.border }}>
+            <span className="text-[10px] tracking-widest uppercase font-bold" style={{ color: C.textD }}>TICKER</span>
+            <input
+              type="text"
+              value={ticker}
+              onChange={e => setTicker(e.target.value.toUpperCase())}
+              onKeyDown={e => e.key === 'Enter' && fetchStockPrice(ticker)}
+              className="bg-transparent w-20 outline-none text-[12px] font-bold tracking-widest uppercase"
+              style={{ color: C.cyan }}
+            />
+          </div>
+          <button
+            onClick={() => fetchStockPrice(ticker)}
+            disabled={isLoading}
+            className="px-6 py-2 border text-[10px] font-bold tracking-widest uppercase hover:bg-white/5 transition-all disabled:opacity-30"
+            style={{ borderColor: C.cyan, color: C.cyan }}
+          >
+            {isLoading ? 'SYNCING...' : 'SYNC PRICE'}
+          </button>
+        </div>
+      </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {/* Input Parameters */}
-          <Card className="terminal-panel terminal-glow">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl font-bold text-primary flex items-center gap-2">
-                  <Calculator className="w-6 h-6" />
-                  Input Parameters
-                </CardTitle>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={resetToDefaults}
-                  className="text-xs"
-                >
-                  <RefreshCircle size={12} className="mr-1" />
-                  Reset
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Stock Symbol Selector */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                  Stock Symbol
-                </label>
-                <div className="flex gap-2">
-                  <StockAutocomplete
-                    value={ticker}
-                    onChange={(newTicker) => {
-                      setTicker(newTicker);
-                      fetchStockPrice(newTicker);
-                    }}
-                    placeholder="Search stocks..."
-                    className="flex-1"
-                  />
-                  <Button 
-                    onClick={() => fetchStockPrice(ticker)}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <TrendUp size={16} className="mr-1" />
-                    Get Price
-                  </Button>
+      <div className="grid grid-cols-12 gap-8">
+
+        {/* LEFT: Parameters */}
+        <div className="col-span-12 lg:col-span-3 flex flex-col gap-6">
+          <div className="border p-6 shadow-2xl" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+            <h3 className="text-[10px] tracking-widest uppercase font-bold border-b pb-2 mb-6" style={{ color: C.textD, borderColor: C.border }}>
+              State Variables
+            </h3>
+            <div className="space-y-4">
+              <InputField label="Stock Price" param="S" step="1" symbol="S" />
+              <InputField label="Strike Price" param="K" step="1" symbol="K" />
+              <InputField label="Time (Y)" param="T" step="0.1" symbol="T" />
+              <InputField label="Volatility (%)" param="sigma" step="1" symbol="σ" multiplier={100} />
+              <InputField label="Risk-Free Rate (%)" param="r" step="0.1" symbol="r" multiplier={100} />
+              <InputField label="Dividend Yield (%)" param="q" step="0.1" symbol="q" multiplier={100} />
+            </div>
+          </div>
+
+          {/* Moneyness Indicator */}
+          <div className="border p-4" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+            <h3 className="text-[10px] tracking-widest uppercase font-bold border-b pb-2 mb-4" style={{ color: C.textD, borderColor: C.border }}>
+              Moneyness
+            </h3>
+            {(() => {
+              const m = params.S / params.K;
+              const label = m > 1.05 ? 'DEEP ITM' : m > 1.0 ? 'IN THE MONEY' : m > 0.95 ? 'AT THE MONEY' : m > 0.9 ? 'OUT OF MONEY' : 'DEEP OTM';
+              const color = m > 1.0 ? C.green : m > 0.95 ? C.amber : C.red;
+              return (
+                <div className="text-center">
+                  <div className="text-2xl font-bold" style={{ color }}>{(m * 100).toFixed(1)}%</div>
+                  <div className="text-[9px] tracking-widest uppercase mt-1 font-bold" style={{ color }}>{label}</div>
                 </div>
-              </div>
-              
-              {parameterConfigs.map((config) => (
-                <ParameterInput
-                  key={config.key}
-                  id={config.key}
-                  label={config.label}
-                  value={config.key === 'r' || config.key === 'sigma' || config.key === 'q' 
-                    ? params[config.key] * 100 // Convert to percentage for display
-                    : params[config.key]
-                  }
-                  onChange={(value) => {
-                    const actualValue = config.key === 'r' || config.key === 'sigma' || config.key === 'q'
-                      ? value / 100 // Convert back to decimal
-                      : value;
-                    updateParam(config.key, actualValue);
-                  }}
-                  min={config.key === 'r' || config.key === 'sigma' || config.key === 'q'
-                    ? config.min * 100 // Convert min to percentage
-                    : config.min
-                  }
-                  max={config.key === 'r' || config.key === 'sigma' || config.key === 'q'
-                    ? config.max * 100 // Convert max to percentage
-                    : config.max
-                  }
-                  step={config.key === 'r' || config.key === 'sigma' || config.key === 'q'
-                    ? config.step * 100 // Convert step to percentage
-                    : config.step
-                  }
-                  suffix={config.suffix}
-                  tooltip={config.tooltip}
-                  color={config.color}
-                />
-              ))}
-            </CardContent>
-          </Card>
-
-          {/* Results */}
-          <div className="space-y-6">
-            {result && <ResultsPanel result={result} params={params} />}
+              );
+            })()}
           </div>
         </div>
 
-        {/* Universal Explanation Panel */}
-        {result && (
-          <UniversalExplanationPanel
-            modelName="BlackScholes"
-            inputs={params}
-            outputs={{
-              delta: result.greeks.delta.call,
-              gamma: result.greeks.gamma,
-              theta: result.greeks.theta.call,
-              vega: result.greeks.vega,
-              rho: result.greeks.rho.call,
-              optionPrice: result.prices.call
-            }}
-          />
-        )}
+        {/* RIGHT: Output & Charts */}
+        <div className="col-span-12 lg:col-span-9 flex flex-col gap-6">
+
+          {/* Price Output Row */}
+          <div className="grid grid-cols-2 gap-6">
+            <div className="border p-6 flex flex-col justify-center items-center shadow-2xl" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+              <span className="text-[10px] tracking-widest uppercase font-bold mb-2" style={{ color: C.textD }}>Theoretical Call Value</span>
+              <span className="text-5xl font-light" style={{ color: C.cyan }}>
+                {currencySymbol}{result ? safeFormat(result.prices.call, 4) : 'NaN'}
+              </span>
+            </div>
+            <div className="border p-6 flex flex-col justify-center items-center shadow-2xl" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+              <span className="text-[10px] tracking-widest uppercase font-bold mb-2" style={{ color: C.textD }}>Theoretical Put Value</span>
+              <span className="text-5xl font-light" style={{ color: C.purple }}>
+                {currencySymbol}{result ? safeFormat(result.prices.put, 4) : 'NaN'}
+              </span>
+            </div>
+          </div>
+
+          {/* Greeks Matrix */}
+          <div className="border shadow-2xl flex flex-col" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+            <div className="p-6 border-b" style={{ borderColor: C.border }}>
+              <h3 className="text-[10px] tracking-widest uppercase font-bold" style={{ color: C.textD }}>
+                First & Second Order Greeks
+              </h3>
+            </div>
+            <div className="p-6 grid grid-cols-2 lg:grid-cols-5 gap-6">
+              {[
+                { name: 'Delta (Δ)', call: result?.greeks.delta.call, put: result?.greeks.delta.put, desc: 'Directional exposure' },
+                { name: 'Gamma (Γ)', call: result?.greeks.gamma, put: result?.greeks.gamma, desc: 'Convexity' },
+                { name: 'Theta (Θ)', call: result?.greeks.theta.call, put: result?.greeks.theta.put, desc: 'Time decay / day' },
+                { name: 'Vega (ν)', call: result?.greeks.vega, put: result?.greeks.vega, desc: 'Vol sensitivity' },
+                { name: 'Rho (ρ)', call: result?.greeks.rho.call, put: result?.greeks.rho.put, desc: 'Rate sensitivity' },
+              ].map((greek, i) => (
+                <div key={i} className="flex flex-col gap-3">
+                  <div className="text-[11px] font-bold uppercase tracking-widest border-b pb-1" style={{ color: C.textH, borderColor: C.border }}>
+                    {greek.name}
+                  </div>
+                  <div className="space-y-2">
+                    <div>
+                      <div className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: C.textD }}>Call</div>
+                      <div className="text-lg font-bold" style={{ color: C.cyan }}>{greek.call !== undefined ? safeFormat(greek.call, 4) : 'NaN'}</div>
+                    </div>
+                    <div>
+                      <div className="text-[9px] uppercase tracking-widest mb-0.5" style={{ color: C.textD }}>Put</div>
+                      <div className="text-lg font-bold" style={{ color: C.purple }}>{greek.put !== undefined ? safeFormat(greek.put, 4) : 'NaN'}</div>
+                    </div>
+                  </div>
+                  <div className="text-[9px] mt-auto uppercase tracking-widest" style={{ color: C.textM }}>{greek.desc}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Charts Row */}
+          <div className="grid grid-cols-2 gap-6">
+
+            {/* Payoff Diagram */}
+            <div className="border p-6 h-[280px] flex flex-col" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+              <h3 className="text-[10px] tracking-widest uppercase font-bold border-b pb-2 mb-4" style={{ color: C.textD, borderColor: C.border }}>
+                P&L at Expiration
+              </h3>
+              <div className="flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={payoffData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="callGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={C.cyan} stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor={C.cyan} stopOpacity={0}/>
+                      </linearGradient>
+                      <linearGradient id="putGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={C.purple} stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor={C.purple} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false} />
+                    <XAxis dataKey="price" stroke={C.textD} fontSize={8} fontFamily={FONT} tickFormatter={v => `${currencySymbol}${v}`} />
+                    <YAxis stroke={C.textD} fontSize={8} fontFamily={FONT} />
+                    <Tooltip contentStyle={{ backgroundColor: '#000', borderColor: C.border, fontFamily: FONT, fontSize: 11 }} />
+                    <ReferenceLine y={0} stroke={C.textM} strokeDasharray="4 4" />
+                    <ReferenceLine x={params.K} stroke={C.amber} strokeDasharray="4 4" label={{ value: 'K', fill: C.amber, fontSize: 9 }} />
+                    <Area type="monotone" dataKey="call" name="Call P&L" stroke={C.cyan} strokeWidth={2} fillOpacity={1} fill="url(#callGrad)" />
+                    <Area type="monotone" dataKey="put" name="Put P&L" stroke={C.purple} strokeWidth={2} fillOpacity={1} fill="url(#putGrad)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Greeks Sensitivity */}
+            <div className="border p-6 h-[280px] flex flex-col" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+              <h3 className="text-[10px] tracking-widest uppercase font-bold border-b pb-2 mb-4" style={{ color: C.textD, borderColor: C.border }}>
+                Delta & Gamma vs Underlying
+              </h3>
+              <div className="flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={greeksSensitivity} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="deltaGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={C.green} stopOpacity={0.2}/>
+                        <stop offset="95%" stopColor={C.green} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false} />
+                    <XAxis dataKey="price" stroke={C.textD} fontSize={8} fontFamily={FONT} tickFormatter={v => `${currencySymbol}${v}`} />
+                    <YAxis stroke={C.textD} fontSize={8} fontFamily={FONT} />
+                    <Tooltip contentStyle={{ backgroundColor: '#000', borderColor: C.border, fontFamily: FONT, fontSize: 11 }} />
+                    <ReferenceLine x={params.K} stroke={C.amber} strokeDasharray="4 4" />
+                    <Area type="monotone" dataKey="delta" name="Delta" stroke={C.green} strokeWidth={2} fillOpacity={1} fill="url(#deltaGrad)" />
+                    <Area type="monotone" dataKey="gamma" name="Gamma (×100)" stroke={C.amber} strokeWidth={1.5} fillOpacity={0} dot={false} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Price History Chart */}
+          {priceHistory.length > 0 && (
+            <div className="border p-6 h-[240px] flex flex-col" style={{ borderColor: C.border, backgroundColor: C.panel }}>
+              <h3 className="text-[10px] tracking-widest uppercase font-bold border-b pb-2 mb-4" style={{ color: C.textD, borderColor: C.border }}>
+                {ticker} — 90D Price Discovery (Live Data)
+              </h3>
+              <div className="flex-1 min-h-0">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={priceHistory} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="priceGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={C.cyan} stopOpacity={0.15}/>
+                        <stop offset="95%" stopColor={C.cyan} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke={C.border} vertical={false} />
+                    <XAxis dataKey="date" stroke={C.textD} fontSize={8} fontFamily={FONT} minTickGap={30} />
+                    <YAxis stroke={C.textD} fontSize={8} fontFamily={FONT} domain={['auto', 'auto']} tickFormatter={v => `${currencySymbol}${v}`} />
+                    <Tooltip contentStyle={{ backgroundColor: '#000', borderColor: C.border, fontFamily: FONT }} />
+                    <ReferenceLine y={params.K} stroke={C.amber} strokeDasharray="4 4" label={{ value: `Strike ${currencySymbol}${params.K}`, fill: C.amber, fontSize: 9, position: 'insideTopRight' }} />
+                    <Area type="monotone" dataKey="close" name="Close" stroke={C.cyan} strokeWidth={2} fillOpacity={1} fill="url(#priceGrad)" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

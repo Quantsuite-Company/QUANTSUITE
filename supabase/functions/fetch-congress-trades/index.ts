@@ -19,11 +19,11 @@ interface CongressTrade {
 
 async function fetchHouseDisclosures(): Promise<CongressTrade[]> {
   console.log("Fetching House periodic transaction reports...");
-  
+
   try {
     // House.gov periodic transaction reports
     const url = "https://disclosures-clerk.house.gov/FinancialDisclosure";
-    
+
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; CongressTradeBot/1.0)',
@@ -47,11 +47,11 @@ async function fetchHouseDisclosures(): Promise<CongressTrade[]> {
 
 async function fetchSenateDisclosures(): Promise<CongressTrade[]> {
   console.log("Fetching Senate periodic transaction reports...");
-  
+
   try {
     // Senate.gov efd system
     const url = "https://efdsearch.senate.gov/search/home/";
-    
+
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; CongressTradeBot/1.0)',
@@ -74,7 +74,7 @@ async function fetchSenateDisclosures(): Promise<CongressTrade[]> {
 // Generate realistic congress trade data
 async function fetchCuratedCongressData(): Promise<CongressTrade[]> {
   console.log("Generating congress trade data...");
-  
+
   const members = [
     { name: "Nancy Pelosi", party: "D", chamber: "House" },
     { name: "Josh Gottheimer", party: "D", chamber: "House" },
@@ -92,22 +92,22 @@ async function fetchCuratedCongressData(): Promise<CongressTrade[]> {
     { name: "French Hill", party: "R", chamber: "House" },
     { name: "Dianne Feinstein", party: "D", chamber: "Senate" },
   ];
-  
+
   const tickers = [
     "NVDA", "MSFT", "AAPL", "GOOGL", "META", "AMZN", "TSLA", "JPM", "BAC", "GS",
     "DIS", "NFLX", "V", "MA", "UNH", "JNJ", "PFE", "XOM", "CVX", "WMT"
   ];
-  
+
   const amounts = [
     "$1k-$15k", "$15k-$50k", "$50k-$100k", "$100k-$250k", "$250k-$500k", "$500k-$1M"
   ];
-  
+
   // Seeded PRNG for stable noise/data generation
   const seededRandom = (seed: string) => {
     let h = 0;
-    for(let i = 0; i < seed.length; i++) h = Math.imul(31, h) + seed.charCodeAt(i) | 0;
+    for (let i = 0; i < seed.length; i++) h = Math.imul(31, h) + seed.charCodeAt(i) | 0;
     let t = h + 0x6D2B79F5;
-    return function() {
+    return function () {
       t += 0x6D2B79F5;
       t = Math.imul(t ^ t >>> 15, t | 1);
       t ^= t + Math.imul(t ^ t >>> 7, t | 61);
@@ -117,26 +117,26 @@ async function fetchCuratedCongressData(): Promise<CongressTrade[]> {
 
   const trades: CongressTrade[] = [];
   const today = new Date();
-  
+
   // Generate 40 deterministic trades over the past 45 days
   for (let i = 0; i < 40; i++) {
     // Seed using index + date to ensure history is stable per session
     const rng = seededRandom(`congress-${i}-${today.toISOString().split('T')[0]}`);
-    
+
     const memberIdx = Math.floor(rng() * members.length);
     const member = members[memberIdx];
     const ticker = tickers[Math.floor(rng() * tickers.length)];
     const isPurchase = rng() > 0.35; // 65% purchases, 35% sales
     const amount = amounts[Math.floor(rng() * amounts.length)];
     const daysAgo = Math.floor(rng() * 45);
-    
+
     const date = new Date(today);
     date.setDate(date.getDate() - daysAgo);
-    
-    const disclosureUrl = member.chamber === "House" 
+
+    const disclosureUrl = member.chamber === "House"
       ? `https://disclosures-clerk.house.gov/FinancialDisclosure`
       : `https://efdsearch.senate.gov/search/`;
-    
+
     trades.push({
       member: member.name,
       party: member.party,
@@ -148,36 +148,46 @@ async function fetchCuratedCongressData(): Promise<CongressTrade[]> {
       disclosure_url: disclosureUrl
     });
   }
-  
+
   return trades.sort((a, b) => b.date.localeCompare(a.date));
 }
 
-serve(async (req) => {
+// Ensure formatting is strictly yyyy-mm-dd for sort
+function normalizeDate(dStr: string | undefined): string {
+  if (!dStr) return "2000-01-01";
+  try {
+    const d = new Date(dStr);
+    if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+  } catch (e) {}
+  return "2000-01-01";
+}
+
+serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     console.log("Starting congress trades fetch...");
-    
-    // Try official sources first (currently returning empty as they need complex parsing)
-    const [houseTrades, senateTrades] = await Promise.all([
+
+    const [houseTrades, senateTrades] = await Promise.allSettled([
       fetchHouseDisclosures(),
       fetchSenateDisclosures()
     ]);
 
-    let allTrades = [...houseTrades, ...senateTrades];
+    const allTrades = [
+      ...(houseTrades.status === 'fulfilled' ? houseTrades.value : []),
+      ...(senateTrades.status === 'fulfilled' ? senateTrades.value : [])
+    ];
 
-    // Use curated data (will always have data now)
-    if (allTrades.length === 0) {
-      console.log("Using curated congress trade data");
-      allTrades = await fetchCuratedCongressData();
-    }
+    // Sort valid real data correctly
+    const sortedTrades = allTrades.sort((a, b) => normalizeDate(b.date).localeCompare(normalizeDate(a.date)));
+
 
     console.log(`Returning ${allTrades.length} congress trades`);
 
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         success: true,
         trades: allTrades,
         source: "Congress Disclosures",
@@ -185,19 +195,19 @@ serve(async (req) => {
         count: allTrades.length,
         note: "Data includes recent House and Senate member trades based on official disclosures."
       }),
-      { 
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   } catch (error: any) {
     console.error('Congress trades fetch error:', error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error.message || 'Failed to fetch congress trades',
         trades: [],
         success: false
       }),
-      { 
+      {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }

@@ -277,17 +277,17 @@ When ML pipeline data is provided (regime detection, factor signals, backtest re
 [NEXT_ACTION: Run correlation analysis on holdings]
 [NEXT_ACTION: Execute sector rotation now]`;
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    const SYSTEM_AI_API_KEY = Deno.env.get('SYSTEM_AI_API_KEY');
+    if (!SYSTEM_AI_API_KEY) {
+      throw new Error('SYSTEM_AI_API_KEY not configured');
     }
 
-    console.log('Calling Lovable AI for strategy advice...');
+    console.log('Calling AI for strategy advice...');
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Authorization': `Bearer ${SYSTEM_AI_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -303,8 +303,8 @@ When ML pipeline data is provided (regime detection, factor signals, backtest re
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error('Lovable AI error:', aiResponse.status, errorText);
-      throw new Error(`Lovable AI request failed: ${aiResponse.status}`);
+      console.error('AI error:', aiResponse.status, errorText);
+      throw new Error(`AI request failed: ${aiResponse.status}`);
     }
 
     const aiData = await aiResponse.json();

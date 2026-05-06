@@ -1,17 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Search, TrendingUp, TrendingDown, BarChart3, Activity, AlertTriangle, Target, Zap, Download } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { useSearchParams } from 'react-router-dom';
+import { 
+  Search, TrendingUp, TrendingDown, Activity, Target, Zap, 
+  Download, Crosshair, BarChart3, Clock, AlertTriangle 
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { InlineChart } from '@/components/ai/PremiumProseParser';
 import { generateStockReportPDF } from '@/lib/reportGenerator';
-
-interface StockData {
-  ticker: string;
-  prices: { date: string; open: number; high: number; low: number; close: number; volume: number }[];
-}
+import {
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, 
+  ResponsiveContainer, CartesianGrid, ReferenceLine
+} from 'recharts';
 
 interface StockReport {
   ticker: string;
@@ -31,8 +31,8 @@ interface StockReport {
   support: number;
   resistance: number;
   signal: 'bullish' | 'bearish' | 'neutral';
-  priceHistory: { name: string; value: number }[];
-  volumeHistory: { name: string; value: number }[];
+  priceHistory: { date: string; close: number; volume: number; isUp: boolean }[];
+  lastUpdated: string;
 }
 
 function calculateRSI(prices: number[], period: number = 14): number {
@@ -63,41 +63,31 @@ function generateReport(ticker: string, data: any[]): StockReport {
   const low52w = Math.min(...closes);
   const avgVolume = volumes.reduce((s: number, v: number) => s + v, 0) / volumes.length;
 
-  // Volatility (annualized)
   const returns = closes.slice(1).map((p: number, i: number) => Math.log(p / closes[i]));
   const meanReturn = returns.reduce((s, r) => s + r, 0) / returns.length;
   const variance = returns.reduce((s, r) => s + Math.pow(r - meanReturn, 2), 0) / returns.length;
   const volatility = Math.sqrt(variance * 252) * 100;
 
-  // Momentum
   const momentum21d = closes.length > 21 ? ((currentPrice / closes[closes.length - 22]) - 1) * 100 : 0;
   const momentum63d = closes.length > 63 ? ((currentPrice / closes[closes.length - 64]) - 1) * 100 : 0;
 
-  // Technicals
   const rsi14 = calculateRSI(closes);
   const sma20 = calculateSMA(closes, 20);
   const sma50 = calculateSMA(closes, 50);
   const sma200 = calculateSMA(closes, 200);
 
-  // Support/Resistance (simple pivot)
   const recentHigh = Math.max(...closes.slice(-20));
   const recentLow = Math.min(...closes.slice(-20));
 
-  // Signal
   let signal: 'bullish' | 'bearish' | 'neutral' = 'neutral';
-  if (currentPrice > sma50 && rsi14 > 50 && momentum21d > 0) signal = 'bullish';
-  else if (currentPrice < sma50 && rsi14 < 50 && momentum21d < 0) signal = 'bearish';
+  if (currentPrice > sma50 && rsi14 > 40 && momentum21d > 0) signal = 'bullish';
+  else if (currentPrice < sma50 && rsi14 < 60 && momentum21d < 0) signal = 'bearish';
 
-  // Price history for chart (last 60 days)
-  const priceHistory = data.slice(-60).map((d: any) => ({
-    name: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    value: d.close,
-  }));
-
-  // Volume history for chart (last 30 days)
-  const volumeHistory = data.slice(-30).map((d: any) => ({
-    name: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    value: Math.round(d.volume / 1000),
+  const priceHistory = data.slice(-90).map((d: any, i: number, arr: any[]) => ({
+    date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    close: d.close,
+    volume: d.volume,
+    isUp: i === 0 || d.close >= arr[i - 1].close
   }));
 
   return {
@@ -119,35 +109,64 @@ function generateReport(ticker: string, data: any[]): StockReport {
     resistance: recentHigh,
     signal,
     priceHistory,
-    volumeHistory,
+    lastUpdated: new Date().toISOString()
   };
 }
 
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    // Basic heuristic since ticker isn't explicitly passed to tooltip easily without prop drilling
+    // We can just omit the currency symbol here or pass it if possible.
+    // Given the structure, we can just use the value without the hardcoded $
+    return (
+      <div className="bg-black/90 border border-white/20 p-3 rounded shadow-xl font-mono backdrop-blur-md">
+        <p className="text-white/60 text-xs mb-2">{label}</p>
+        <p className="text-white font-bold text-lg">
+          {payload[0].value.toFixed(2)}
+        </p>
+        {payload[1] && (
+          <p className="text-white/60 text-xs mt-1">
+            Vol: {(payload[1].value / 1e6).toFixed(2)}M
+          </p>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function StockReportPage() {
-  const [ticker, setTicker] = useState('');
+  const [ticker, setTicker] = useState('NVDA');
+  const [inputTicker, setInputTicker] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [report, setReport] = useState<StockReport | null>(null);
 
-  const handleAnalyze = async () => {
-    if (!ticker.trim()) return;
-    setIsLoading(true);
+  const currencySymbol = report?.ticker.endsWith('.NS') || report?.ticker.endsWith('.BO') ? '₹' : '$';
 
+  const handleAnalyze = async (symbol: string) => {
+    const target = symbol.trim().toUpperCase();
+    if (!target) return;
+    
+    setIsLoading(true);
+    setTicker(target);
+    
     try {
       const { data, error } = await supabase.functions.invoke('fetch-stock-data', {
-        body: { tickers: [ticker.toUpperCase()], period: '1y' },
+        body: { tickers: [target], period: '1y' },
       });
 
       if (error) throw error;
 
-      const stockData = data?.stockData?.[ticker.toUpperCase()];
+      const stockData = data?.stockData?.[target];
       if (!stockData || stockData.length < 20) {
-        toast.error(`No sufficient data for ${ticker.toUpperCase()}`);
+        toast.error(`No sufficient robust data found for ${target}`);
+        setReport(null);
         return;
       }
 
-      const r = generateReport(ticker.toUpperCase(), stockData);
+      const r = generateReport(target, stockData);
       setReport(r);
-      toast.success(`Report generated for ${ticker.toUpperCase()}`);
+      toast.success(`Data integrity verified. Loaded ${target}`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to fetch stock data');
     } finally {
@@ -155,171 +174,261 @@ export default function StockReportPage() {
     }
   };
 
-  const signalColor = report?.signal === 'bullish' ? 'text-emerald-400' : report?.signal === 'bearish' ? 'text-rose-400' : 'text-amber-400';
-  const signalBg = report?.signal === 'bullish' ? 'bg-emerald-500/10 border-emerald-500/30' : report?.signal === 'bearish' ? 'bg-rose-500/10 border-rose-500/30' : 'bg-amber-500/10 border-amber-500/30';
+  const [searchParams] = useSearchParams();
+
+  // Load default on mount
+  useEffect(() => {
+    const t = searchParams.get('ticker') || 'NVDA';
+    handleAnalyze(t);
+  }, [searchParams]);
 
   return (
-    <div className="min-h-screen bg-background p-4 md:p-6">
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-4xl mx-auto space-y-6"
-      >
-        {/* Header */}
-        <div className="space-y-2">
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <BarChart3 className="w-6 h-6 text-primary" />
-            Stock Report
-          </h1>
-          <p className="text-muted-foreground text-sm">One-click institutional-grade stock analysis powered by Yahoo Finance</p>
-        </div>
-
-        {/* Search */}
-        <div className="flex gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value.toUpperCase())}
-              onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
-              placeholder="Enter ticker (e.g. AAPL, NVDA, RELIANCE.NS)"
-              className="pl-10"
+    <div className="relative h-screen w-full bg-[#09090b] text-white overflow-hidden font-mono flex flex-col">
+      {/* TOP COMMAND DECK */}
+      <div className="flex-none bg-black/80 border-b border-white/10 px-6 py-3 z-20 backdrop-blur-md flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 border-r border-white/10 pr-6">
+            <BarChart3 className="w-5 h-5 text-emerald-500" />
+            <div className="text-[11px] font-bold tracking-widest leading-tight uppercase">
+              Asset Report <br/>
+              <span className="text-white/40 font-light">Institutional Grade</span>
+            </div>
+          </div>
+          
+          <div className="relative w-[300px] flex items-center gap-3">
+            <span className="text-[10px] text-white/50 tracking-widest font-bold uppercase shrink-0">
+              TARGET_ID {'>'}
+            </span>
+            <input
+              type="text"
+              value={inputTicker}
+              onChange={(e) => setInputTicker(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleAnalyze(inputTicker);
+                  setInputTicker('');
+                }
+              }}
+              disabled={isLoading}
+              placeholder="e.g. AAPL, TSLA"
+              className="w-full bg-white/5 border border-white/10 text-white placeholder:text-white/20 text-xs px-3 py-1.5 rounded focus:outline-none focus:border-emerald-500/50 transition-colors uppercase tracking-widest"
             />
           </div>
-          <Button onClick={handleAnalyze} disabled={isLoading || !ticker.trim()}>
-            {isLoading ? 'Analyzing...' : 'Analyze'}
-            <Zap className="w-4 h-4 ml-2" />
-          </Button>
-          {report && (
-            <Button variant="outline" onClick={() => generateStockReportPDF(report.ticker, report)}>
-              <Download className="w-4 h-4 mr-2" />
-              PDF
-            </Button>
+          
+          {isLoading && (
+            <div className="flex items-center gap-2 text-emerald-500 text-xs animate-pulse tracking-widest uppercase">
+              <Zap className="w-3 h-3" /> Fetching Market Data...
+            </div>
           )}
         </div>
 
-        {/* Report */}
         {report && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
+          <button 
+            onClick={() => generateStockReportPDF(report.ticker, report)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded text-xs transition-colors tracking-widest uppercase"
           >
-            {/* Price Header */}
-            <div className={`p-6 rounded-xl border ${signalBg}`}>
-              <div className="flex items-center justify-between flex-wrap gap-4">
-                <div>
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="text-2xl font-bold font-mono text-foreground">{report.ticker}</span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${signalColor} ${signalBg}`}>
-                      {report.signal}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-3xl font-bold font-mono text-foreground">${report.currentPrice.toFixed(2)}</span>
-                    <span className={`flex items-center gap-1 text-lg font-mono ${report.change >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {report.change >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
-                      {report.change >= 0 ? '+' : ''}{report.change.toFixed(2)} ({report.changePercent.toFixed(2)}%)
-                    </span>
-                  </div>
+            <Download className="w-3 h-3" /> PDF Export
+          </button>
+        )}
+      </div>
+
+      {/* MAIN HUD AREA */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* LEFT PANEL: KEY METRICS */}
+        <div className="w-[320px] bg-black/40 border-r border-white/5 overflow-y-auto flex flex-col hide-scrollbar">
+          {report ? (
+            <motion.div 
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="p-5 space-y-6"
+            >
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <h1 className="text-4xl font-bold tracking-tighter">{report.ticker}</h1>
+                  <span className={`text-[10px] uppercase tracking-widest px-2 py-0.5 border ${
+                    report.signal === 'bullish' ? 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10' :
+                    report.signal === 'bearish' ? 'text-rose-400 border-rose-500/30 bg-rose-500/10' :
+                    'text-amber-400 border-amber-500/30 bg-amber-500/10'
+                  }`}>
+                    SIG: {report.signal}
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm">
-                  <div><span className="text-muted-foreground">52W High:</span> <span className="font-mono text-foreground">${report.high52w.toFixed(2)}</span></div>
-                  <div><span className="text-muted-foreground">52W Low:</span> <span className="font-mono text-foreground">${report.low52w.toFixed(2)}</span></div>
-                  <div><span className="text-muted-foreground">Avg Vol:</span> <span className="font-mono text-foreground">{(report.avgVolume / 1e6).toFixed(1)}M</span></div>
-                  <div><span className="text-muted-foreground">Volatility:</span> <span className="font-mono text-foreground">{report.volatility.toFixed(1)}%</span></div>
+                <div className="flex items-baseline gap-2">
+                  <p className="text-3xl font-light">{currencySymbol}{report.currentPrice.toFixed(2)}</p>
+                  <p className={`text-sm tracking-wider ${report.change >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                    {report.change >= 0 ? '+' : ''}{report.change.toFixed(2)} ({report.changePercent.toFixed(2)}%)
+                  </p>
                 </div>
               </div>
-            </div>
 
-            {/* Price Chart */}
-            <InlineChart
-              data={report.priceHistory}
-              type="area"
-              theme="strategy"
-              title={`${report.ticker} — 60-Day Price`}
-              height={250}
-            />
-
-            {/* Key Metrics Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'RSI (14)', value: report.rsi14.toFixed(1), warn: report.rsi14 > 70 || report.rsi14 < 30, icon: <Activity className="w-4 h-4" /> },
-                { label: '21D Momentum', value: `${report.momentum21d >= 0 ? '+' : ''}${report.momentum21d.toFixed(2)}%`, color: report.momentum21d >= 0 ? 'text-emerald-400' : 'text-rose-400', icon: <TrendingUp className="w-4 h-4" /> },
-                { label: '63D Momentum', value: `${report.momentum63d >= 0 ? '+' : ''}${report.momentum63d.toFixed(2)}%`, color: report.momentum63d >= 0 ? 'text-emerald-400' : 'text-rose-400', icon: <Target className="w-4 h-4" /> },
-                { label: 'Signal', value: report.signal.toUpperCase(), color: signalColor, icon: <AlertTriangle className="w-4 h-4" /> },
-              ].map((m, i) => (
-                <div key={i} className="p-4 rounded-xl bg-card/30 border border-border/30">
-                  <div className="flex items-center gap-2 text-muted-foreground mb-2">{m.icon}<span className="text-xs uppercase tracking-wider">{m.label}</span></div>
-                  <span className={`font-mono text-xl font-bold ${m.color || (m.warn ? 'text-amber-400' : 'text-foreground')}`}>{m.value}</span>
-                </div>
-              ))}
-            </div>
-
-            {/* Moving Averages */}
-            <div className="p-5 rounded-xl bg-card/20 border border-border/30">
-              <p className="text-xs uppercase tracking-wider text-muted-foreground mb-4">Moving Averages</p>
-              <div className="grid grid-cols-3 gap-6">
+              {/* Data Grid */}
+              <div className="grid grid-cols-2 gap-px bg-white/5 border border-white/5">
                 {[
-                  { label: 'SMA 20', value: report.sma20, above: report.currentPrice > report.sma20 },
-                  { label: 'SMA 50', value: report.sma50, above: report.currentPrice > report.sma50 },
-                  { label: 'SMA 200', value: report.sma200, above: report.currentPrice > report.sma200 },
-                ].map((sma, i) => (
-                  <div key={i} className="space-y-1">
-                    <span className="text-sm text-muted-foreground">{sma.label}</span>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-lg text-foreground">${sma.value.toFixed(2)}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded ${sma.above ? 'bg-emerald-500/20 text-emerald-400' : 'bg-rose-500/20 text-rose-400'}`}>
-                        {sma.above ? 'Above' : 'Below'}
-                      </span>
-                    </div>
+                  { label: "52W HIGH", value: `${currencySymbol}${report.high52w.toFixed(2)}` },
+                  { label: "52W LOW", value: `${currencySymbol}${report.low52w.toFixed(2)}` },
+                  { label: "AVG VOL", value: `${(report.avgVolume / 1e6).toFixed(2)}M` },
+                  { label: "VOLATILITY", value: `${report.volatility.toFixed(1)}%` },
+                  { label: "RSI(14)", value: report.rsi14.toFixed(1), color: report.rsi14 > 70 ? 'text-rose-400' : report.rsi14 < 30 ? 'text-emerald-400' : 'text-white' },
+                  { label: "MOM(21D)", value: `${report.momentum21d > 0 ? '+' : ''}${report.momentum21d.toFixed(1)}%`, color: report.momentum21d > 0 ? 'text-emerald-400' : 'text-rose-400' },
+                ].map((item, i) => (
+                  <div key={i} className="bg-[#09090b] p-3 flex flex-col justify-center">
+                    <span className="text-[9px] text-white/40 tracking-widest uppercase mb-1">{item.label}</span>
+                    <span className={`text-sm font-medium ${item.color || 'text-white'}`}>{item.value}</span>
                   </div>
                 ))}
               </div>
-            </div>
 
-            {/* Volume Chart */}
-            <InlineChart
-              data={report.volumeHistory}
-              type="bar"
-              theme="quant"
-              title="30-Day Volume (thousands)"
-              height={180}
-            />
-
-            {/* Support/Resistance */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
-                <span className="text-xs text-emerald-400 uppercase tracking-wider">Support</span>
-                <p className="font-mono text-xl font-bold text-foreground mt-1">${report.support.toFixed(2)}</p>
+              {/* Moving Averages */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-[10px] text-white/50 tracking-widest uppercase border-b border-white/10 pb-2">
+                  <Activity className="w-3 h-3" /> Moving Averages Matrix
+                </div>
+                {[
+                  { label: 'SMA 20', val: report.sma20 },
+                  { label: 'SMA 50', val: report.sma50 },
+                  { label: 'SMA 200', val: report.sma200 },
+                ].map((sma, i) => {
+                  const isAbove = report.currentPrice > sma.val;
+                  return (
+                    <div key={i} className="flex items-center justify-between text-sm py-1">
+                      <span className="text-white/60">{sma.label}</span>
+                      <div className="flex items-center gap-3">
+                        <span>{currencySymbol}{sma.val.toFixed(2)}</span>
+                        <div className={`w-1.5 h-1.5 rounded-full ${isAbove ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-              <div className="p-4 rounded-xl bg-rose-500/5 border border-rose-500/20">
-                <span className="text-xs text-rose-400 uppercase tracking-wider">Resistance</span>
-                <p className="font-mono text-xl font-bold text-foreground mt-1">${report.resistance.toFixed(2)}</p>
-              </div>
-            </div>
-          </motion.div>
-        )}
 
-        {/* Empty State */}
-        {!report && !isLoading && (
-          <div className="text-center py-20 space-y-4">
-            <Search className="w-12 h-12 text-muted-foreground/30 mx-auto" />
-            <p className="text-muted-foreground">Enter a ticker symbol above and hit Analyze for an instant institutional report.</p>
-            <div className="flex flex-wrap justify-center gap-2">
-              {['AAPL', 'NVDA', 'MSFT', 'TSLA', 'GOOGL'].map(t => (
-                <button
-                  key={t}
-                  onClick={() => { setTicker(t); }}
-                  className="px-3 py-1.5 rounded-lg bg-card/30 border border-border/30 text-sm font-mono text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
-                >
-                  {t}
-                </button>
-              ))}
+              {/* Support/Resistance */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-[10px] text-white/50 tracking-widest uppercase border-b border-white/10 pb-2">
+                  <Crosshair className="w-3 h-3" /> Technical Boundaries
+                </div>
+                <div className="bg-emerald-500/5 border border-emerald-500/20 p-3 rounded">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[10px] text-emerald-500/70 tracking-widest">RESISTANCE</span>
+                  </div>
+                  <div className="text-lg text-emerald-400">{currencySymbol}{report.resistance.toFixed(2)}</div>
+                </div>
+                <div className="bg-rose-500/5 border border-rose-500/20 p-3 rounded">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[10px] text-rose-500/70 tracking-widest">SUPPORT</span>
+                  </div>
+                  <div className="text-lg text-rose-400">{currencySymbol}{report.support.toFixed(2)}</div>
+                </div>
+              </div>
+
+            </motion.div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center p-6 text-center text-white/20">
+              {isLoading ? 'AWAITING DATA...' : 'ENTER TICKER ABOVE'}
             </div>
-          </div>
-        )}
-      </motion.div>
+          )}
+        </div>
+
+        {/* RIGHT PANEL: FULLSCREEN CHARTS */}
+        <div className="flex-1 flex flex-col p-6 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-white/[0.02] via-transparent to-transparent">
+          {report ? (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="flex-1 flex flex-col space-y-6"
+            >
+              {/* Header Info */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                <div className="flex items-center gap-4">
+                  <span className="text-xs text-white/70 tracking-widest uppercase">90-Day Price Discovery</span>
+                  <div className="flex gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[10px] text-white/40 tracking-widest">LIVE SYNC</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Price Chart */}
+              <div className="flex-1 min-h-0 relative">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={report.priceHistory} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={report.change >= 0 ? '#10b981' : '#f43f5e'} stopOpacity={0.3}/>
+                        <stop offset="95%" stopColor={report.change >= 0 ? '#10b981' : '#f43f5e'} stopOpacity={0}/>
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" vertical={false} />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#ffffff40" 
+                      fontSize={11} 
+                      tickMargin={10}
+                      minTickGap={30}
+                    />
+                    <YAxis 
+                      domain={['auto', 'auto']} 
+                      stroke="#ffffff40" 
+                      fontSize={11}
+                      tickFormatter={(val) => `${currencySymbol}${val}`}
+                      orientation="right"
+                    />
+                    <Tooltip content={<CustomTooltip />} />
+                    <ReferenceLine y={report.sma50} stroke="#eab308" strokeDasharray="3 3" opacity={0.5} />
+                    <Area 
+                      type="monotone" 
+                      dataKey="close" 
+                      stroke={report.change >= 0 ? '#10b981' : '#f43f5e'} 
+                      strokeWidth={2}
+                      fillOpacity={1} 
+                      fill="url(#colorPrice)" 
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Volume Indicator */}
+              <div className="h-[120px] relative border-t border-white/5 pt-4">
+                <span className="absolute top-2 left-0 text-[10px] text-white/40 tracking-widest z-10">VOLUME HISTOGRAM</span>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={report.priceHistory} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <YAxis hide domain={[0, 'auto']} />
+                    <Tooltip 
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-black/80 px-2 py-1 border border-white/10 text-xs">
+                              {(payload[0].value / 1e6).toFixed(2)}M
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                      cursor={{ fill: 'rgba(255,255,255,0.05)' }} 
+                    />
+                    <Bar 
+                      dataKey="volume" 
+                      isAnimationActive={false}
+                    >
+                      {
+                        report.priceHistory.map((entry, index) => (
+                          <cell key={`cell-${index}`} fill={entry.isUp ? '#10b98140' : '#f43f5e40'} />
+                        ))
+                      }
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center opacity-20">
+              <BarChart3 className="w-32 h-32 mb-6" />
+              <p className="text-xl tracking-widest font-light">SYSTEM STANDBY</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
